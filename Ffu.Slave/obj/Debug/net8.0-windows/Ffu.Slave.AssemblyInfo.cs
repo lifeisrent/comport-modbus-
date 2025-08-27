@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Ffu.Slave")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+165be1bbbb00d11ab02cf921234919623e799a5d")]
 [assembly: System.Reflection.AssemblyProductAttribute("Ffu.Slave")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Ffu.Slave")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

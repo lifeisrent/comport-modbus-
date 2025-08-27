@@ -15,6 +15,7 @@ namespace Ffu.Slave
         private SerialPort? _port;
         private CancellationTokenSource? _cts;
         private Task? _loopTask;
+        private HashSet<int> _idSet = new();
         private int _rpmCache; // 0~1500
 
         public MainWindow()
@@ -27,8 +28,7 @@ namespace Ffu.Slave
         {
             try
             {
-                if (!int.TryParse(TxtId.Text, out var id) || id < 1 || id > 64)
-                    throw new ArgumentException("Slave ID: 1~64");
+
                 var com = TxtCom.Text.Trim();
 
                 _port = new SerialPort(com, 9600, Parity.None, 8, StopBits.One)
@@ -55,12 +55,45 @@ namespace Ffu.Slave
         private void BtnStart_Click(object sender, RoutedEventArgs e)
         {
             if (_port == null || !_port.IsOpen) { Log("Port not open"); return; }
-            if (!int.TryParse(TxtId.Text, out var id) || id < 1 || id > 64) { Log("ID 1~64"); return; }
+            
+            var ids = ParseIdSet(TxtIds.Text);
+            if (ids.Count == 0) { Log("IDs empty or invalid. ex) 1,3,5-7"); return; }
 
+            _idSet = new HashSet<int>(ids);
             _cts = new CancellationTokenSource();
-            _loopTask = Task.Run(() => ListenLoop(id, _cts.Token));
+            _loopTask = Task.Run(() => ListenLoop(_cts.Token));
             BtnStart.IsEnabled = false; BtnStop.IsEnabled = true;
         }
+        private static List<int> ParseIdSet(string text)
+        {
+            var set = new SortedSet<int>();
+            if (string.IsNullOrWhiteSpace(text)) return new List<int>();
+
+            foreach (var tok in text.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (tok.Contains('-'))
+                {
+                    var p = tok.Split('-', 2, StringSplitOptions.RemoveEmptyEntries);
+                    if (p.Length == 2 && int.TryParse(p[0], out var a) && int.TryParse(p[1], out var b))
+                    {
+                        if (a > b) (a, b) = (b, a);
+                        for (int i = a; i <= b; i++) if (i >= 1 && i <= 64) set.Add(i);
+                    }
+                }
+                else if (int.TryParse(tok, out var v) && v >= 1 && v <= 64)
+                {
+                    set.Add(v);
+                }
+            }
+            return new List<int>(set);
+        }
+        static (byte lo, byte hi) EncodeRpmLE(int rpm)
+        {
+            if (rpm < 0) rpm = 0;
+            if (rpm > 1500) rpm = 1500;
+            return ((byte)(rpm & 0xFF), (byte)((rpm >> 8) & 0xFF));
+        }
+        static int DecodeRpmLE(byte lo, byte hi) => (hi << 8) | lo;
 
         private void BtnStop_Click(object sender, RoutedEventArgs e)
         {
@@ -68,7 +101,7 @@ namespace Ffu.Slave
             BtnStart.IsEnabled = true; BtnStop.IsEnabled = false;
         }
 
-        private async Task ListenLoop(int myId, CancellationToken ct)
+        private async Task ListenLoop(CancellationToken ct)
         {
             var rx = new List<byte>(64);
 
@@ -80,38 +113,62 @@ namespace Ffu.Slave
                     if (b < 0) continue;
                     rx.Add((byte)b);
 
-                    // 헤더 동기화 (49 53 ...)
+                    // 헤더 동기화: 49 53 ...
                     while (rx.Count >= 1 && rx[0] != 0x49) rx.RemoveAt(0);
                     if (rx.Count >= 2 && rx[1] != 0x53) { rx.RemoveAt(0); continue; }
 
                     // 요청 프레임: 49 53 ID 05 00 00 CS (총 7바이트)
                     if (rx.Count >= 7)
                     {
-                        // 인덱싱으로 직접 접근 (Span/AsSpan 제거)
                         byte id = rx[2];
                         byte cmd = rx[3];
                         byte cs = rx[6];
-                        byte calc = SumChecksum(rx, 0, 6); // 아래 오버로드 추가
+                        byte calc = SumChecksum(rx, 0, 6);   // CS 제외(0~5) 합의 LSB
 
-                        if (cs == calc && cmd == 0x05 && id == (byte)myId)
+                        // === 0x06: Target RPM Set (LE) ===
+                        if (cs == calc && cmd == 0x06 && _idSet.Contains(id))
+                        {
+                            // DATA1=lo, DATA2=hi  (LE)
+                            byte lo = rx[4], hi = rx[5];
+                            int rpm = DecodeRpmLE(lo, hi);
+                            if (rpm < 0) rpm = 0; if (rpm > 1500) rpm = 1500;
+
+                            Volatile.Write(ref _rpmCache, rpm);
+                            Log($"SET ID={id} RPM={rpm}");
+
+                            // (선택) ACK 응답: 44 54 ID 06 00 00 lo hi CS
+                            var ack = new byte[9];
+                            ack[0] = 0x44; ack[1] = 0x54; ack[2] = id;
+                            ack[3] = 0x06; ack[4] = 0x00; ack[5] = 0x00;
+                            ack[6] = lo; ack[7] = hi;
+                            ack[8] = SumChecksum(ack, 8);
+
+                            _port!.Write(ack, 0, ack.Length);
+                            Log($"ACK {Hex(ack)}");
+
+                            rx.RemoveRange(0, 7);
+                            continue; // 다음 프레임
+                        }
+
+                        if (cs == calc && cmd == 0x05 && _idSet.Contains(id))
                         {
                             Log($"REQ {Hex(rx, 0, 7)}");
 
-                            // 현재 요구: rpm==0만 응답
-                            int rpm = Volatile.Read(ref _rpmCache);
-                            if (rpm != 0) rpm = 0;
+                            int rpm = Volatile.Read(ref _rpmCache);        // 0~1500
+                            var (lo, hi) = EncodeRpmLE(rpm);
 
-                            // 응답: 44 54 ID 05 00 00 [rpmH] [rpmL] CS (9바이트)
+                            // 응답: 44 54 ID 05 00 00 lo hi CS (LE)
                             var resp = new byte[9];
-                            resp[0] = 0x44; resp[1] = 0x54; resp[2] = (byte)myId;
+                            resp[0] = 0x44; resp[1] = 0x54; resp[2] = id;
                             resp[3] = 0x05; resp[4] = 0x00; resp[5] = 0x00;
-                            resp[6] = (byte)((rpm >> 8) & 0xFF);
-                            resp[7] = (byte)(rpm & 0xFF);
-                            resp[8] = SumChecksum(resp.AsSpan(0, 8));
+                            resp[6] = lo;   // LE
+                            resp[7] = hi;   // LE
+                            resp[8] = SumChecksum(resp, 8);
 
                             _port.Write(resp, 0, resp.Length);
                             Log($"RES {Hex(resp)}");
                         }
+
 
                         // 프레임 소비
                         rx.RemoveRange(0, 7);
@@ -125,6 +182,7 @@ namespace Ffu.Slave
                 }
             }
         }
+
         // List<byte> 범위 체크섬
         static byte SumChecksum(List<byte> src, int offset, int length)
         {
@@ -133,14 +191,21 @@ namespace Ffu.Slave
             return (byte)(sum & 0xFF);
         }
 
-        // List<byte> 범위 HEX 출력
+        // byte[] + 길이 체크섬 (응답 계산용)
+        static byte SumChecksum(byte[] buf, int len)
+        {
+            int sum = 0;
+            for (int i = 0; i < len; i++) sum += buf[i];
+            return (byte)(sum & 0xFF);
+        }
+
+        // HEX 도우미 (있는 버전 쓰면 생략)
         static string Hex(List<byte> src, int offset, int length)
         {
-            var sb = new StringBuilder(length * 3);
+            var sb = new System.Text.StringBuilder(length * 3);
             for (int i = 0; i < length; i++) sb.Append(src[offset + i].ToString("X2")).Append(' ');
             return sb.ToString().TrimEnd();
         }
-
         private int ParseRpmSafe()
         {
             if (!int.TryParse(TxtRpm.Text, out var rpm)) rpm = 0;
