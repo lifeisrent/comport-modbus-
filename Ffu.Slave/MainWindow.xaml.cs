@@ -1,5 +1,8 @@
 ﻿using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO.Ports;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -17,13 +20,41 @@ namespace Ffu.Slave
         private Task? _loopTask;
         private HashSet<int> _idSet = new();
         private int _rpmCache; // 0~1500
+        public ObservableCollection<WatchSlot> WatchSlots { get; } = new();
+
+        // ID→RPM 캐시(수신값 저장)
+        private readonly ConcurrentDictionary<int, int> _rpmById = new();
 
         public MainWindow()
         {
             InitializeComponent();
             Closed += (_, __) => Cleanup();
-        }
 
+            var s1 = new WatchSlot { WatchId = 1 };
+            var s2 = new WatchSlot { WatchId = 2 };
+            // WatchId 변경되면 현재 캐시값으로 즉시 반영
+            s1.PropertyChanged += WatchSlot_PropertyChanged;
+            s2.PropertyChanged += WatchSlot_PropertyChanged;
+
+            WatchSlots.Add(s1);
+            WatchSlots.Add(s2);
+
+            if (DataContext == null) DataContext = this;
+        }
+        private void WatchSlot_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(WatchSlot.WatchId)) return;
+            if (sender is WatchSlot slot)
+            {
+                Dispatcher.BeginInvoke(() =>
+                {
+                    if (slot.WatchId is int id && id >= 1 && id <= 64 && _rpmById.TryGetValue(id, out var rpm))
+                        slot.CurrentRpm = rpm.ToString();
+                    else
+                        slot.CurrentRpm = "-";
+                });
+            }
+        }
         private void BtnOpen_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -43,13 +74,7 @@ namespace Ffu.Slave
             }
             catch (Exception ex) { Log($"Open FAIL: {ex.Message}"); }
         }
-        private void TxtRpm_TextChanged(object sender, TextChangedEventArgs e)
-        {
-            if (!int.TryParse(TxtRpm.Text, out var rpm)) rpm = 0;
-            if (rpm < 0) rpm = 0;
-            if (rpm > 1500) rpm = 1500;
-            Volatile.Write(ref _rpmCache, rpm); // 캐시에 저장
-        }
+ 
         private void BtnClose_Click(object sender, RoutedEventArgs e) => Cleanup();
 
         private void BtnStart_Click(object sender, RoutedEventArgs e)
@@ -132,6 +157,8 @@ namespace Ffu.Slave
                             byte lo = rx[4], hi = rx[5];
                             int rpm = DecodeRpmLE(lo, hi);
                             if (rpm < 0) rpm = 0; if (rpm > 1500) rpm = 1500;
+                            _rpmById[id] = rpm;
+                            UpdateWatchSlotsFor(id, rpm);
 
                             Volatile.Write(ref _rpmCache, rpm);
                             Log($"SET ID={id} RPM={rpm}");
@@ -154,7 +181,9 @@ namespace Ffu.Slave
                         {
                             Log($"REQ {Hex(rx, 0, 7)}");
 
-                            int rpm = Volatile.Read(ref _rpmCache);        // 0~1500
+                            int rpm = Volatile.Read(ref _rpmCache);
+                            _rpmById[id] = rpm;
+                            UpdateWatchSlotsFor(id, rpm);
                             var (lo, hi) = EncodeRpmLE(rpm);
 
                             // 응답: 44 54 ID 05 00 00 lo hi CS (LE)
@@ -182,6 +211,18 @@ namespace Ffu.Slave
                 }
             }
         }
+        private void UpdateWatchSlotsFor(int id, int rpm)
+        {
+            // 해당 ID를 보고 있는 슬롯만 안전하게 갱신
+            Dispatcher.BeginInvoke(() =>
+            {
+                foreach (var slot in WatchSlots)
+                {
+                    if (slot.WatchId == id)
+                        slot.CurrentRpm = rpm.ToString();
+                }
+            });
+        }
 
         // List<byte> 범위 체크섬
         static byte SumChecksum(List<byte> src, int offset, int length)
@@ -206,13 +247,11 @@ namespace Ffu.Slave
             for (int i = 0; i < length; i++) sb.Append(src[offset + i].ToString("X2")).Append(' ');
             return sb.ToString().TrimEnd();
         }
-        private int ParseRpmSafe()
-        {
-            if (!int.TryParse(TxtRpm.Text, out var rpm)) rpm = 0;
-            if (rpm < 0) rpm = 0;
-            if (rpm > 1500) rpm = 1500;
-            return rpm;
-        }
+
+        private static int ParseWatch(string s)
+    => (int.TryParse(s, out var v) && v >= 1 && v <= 64) ? v : -1;
+
+
 
         static byte SumChecksum(ReadOnlySpan<byte> frame)
         {

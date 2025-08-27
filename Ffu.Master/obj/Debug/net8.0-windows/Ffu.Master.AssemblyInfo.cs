@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Ffu.Master")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+165be1bbbb00d11ab02cf921234919623e799a5d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+50a6339a1ff56aa96c26585c4393f4cea79837a6")]
 [assembly: System.Reflection.AssemblyProductAttribute("Ffu.Master")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Ffu.Master")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
