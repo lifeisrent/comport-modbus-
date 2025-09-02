@@ -121,7 +121,9 @@ namespace Ffu.Master
                 };
                 _port.Open();
 
-                Log($"OPEN {_port.PortName} 9600-8N1");
+                LoadOrScanIds();
+
+                Log($"OPEN {_port.PortName} 9600");
                 BtnOpen.IsEnabled = false; BtnClose.IsEnabled = true; BtnStart.IsEnabled = true;
             }
             catch (Exception ex) { Log($"Open FAIL: {ex.Message}"); }

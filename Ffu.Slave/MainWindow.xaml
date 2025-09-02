@@ -14,7 +14,7 @@
             <TextBlock Text="FFU ID(s):" VerticalAlignment="Center" Margin="0,0,8,0"/>
             <TextBox x:Name="TxtIds" Width="160" Text="1,2" Margin="0,0,16,0"/>
             <TextBlock Text="COM Port:" VerticalAlignment="Center" Margin="0,0,8,0"/>
-            <TextBox x:Name="TxtCom" Width="80" Text="COM2" Margin="0,0,16,0"/>
+            <TextBox x:Name="TxtCom" Width="80" Text="COM6" Margin="0,0,16,0"/>
 
         </StackPanel>
 
