@@ -52,6 +52,21 @@
             <TextBox x:Name="TxtLog" Grid.Row="3" IsReadOnly="True" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" Grid.ColumnSpan="2"/>
         </Grid>
 
+        <StackPanel Grid.Row="0" Grid.Column="1" Orientation="Horizontal" Margin="8">
+            <CheckBox Content="ID 1 (800/0)" Tag="1"
+            Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
+            <CheckBox Content="ID 2 (800/0)" Tag="2"
+            Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
+            <CheckBox Content="ID 3 (800/0)" Tag="3"
+            Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
+            <CheckBox Content="ID 4 (800/0)" Tag="4"
+            Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
+            <CheckBox Content="ID 5 (800/0)" Tag="5"
+            Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
+            <CheckBox Content="ID 6 (800/0)" Tag="6"
+            Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
+        </StackPanel>
+
     </Grid>
     
 </Window>

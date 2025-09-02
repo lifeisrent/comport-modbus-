@@ -23,25 +23,34 @@ namespace Ffu.Master
             Closed += (_, __) => Cleanup();
         }
 
-        private void OnRbChecked(object sender, RoutedEventArgs e)
+        private void OnChkChecked(object sender, RoutedEventArgs e)
         {
-            if (sender is RadioButton rb && rb.Tag is int id)
+            if (sender is CheckBox cb && TryGetId(cb.Tag, out int id))
             {
-                // UI 상태를 SendLoop와 동일하게 맞춘다 (Set 모드 + 800RPM)
+                // SendLoop와 동일 경로 사용: Set 모드 + 800
                 Dispatcher.Invoke(() => { CmbMode.SelectedIndex = 1; TxtTargetRpm.Text = "800"; });
                 SendOnce(id);
             }
         }
 
-        private void OnRbUnchecked(object sender, RoutedEventArgs e)
+        private void OnChkUnchecked(object sender, RoutedEventArgs e)
         {
-            if (sender is RadioButton rb && rb.Tag is int id)
+            if (sender is CheckBox cb && TryGetId(cb.Tag, out int id))
             {
-                // Set 모드 + 0RPM
+                // Set 모드 + 0
                 Dispatcher.Invoke(() => { CmbMode.SelectedIndex = 1; TxtTargetRpm.Text = "0"; });
                 SendOnce(id);
             }
         }
+
+        private static bool TryGetId(object? tag, out int id)
+        {
+            if (tag is int v) { id = v; return true; }
+            if (int.TryParse(tag?.ToString(), out v)) { id = v; return true; }
+            id = 0; return false;
+        }
+
+
         private void SendOnce(int id)
         {
             if (_port == null || !_port.IsOpen) { Log("Port not open"); return; }
