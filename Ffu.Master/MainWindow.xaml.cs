@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO.Ports;
+using System.Runtime.Intrinsics.Arm;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -27,9 +28,7 @@ namespace Ffu.Master
         {
             if (sender is CheckBox cb && TryGetId(cb.Tag, out int id))
             {
-                // SendLoop와 동일 경로 사용: Set 모드 + 800
-                Dispatcher.Invoke(() => { CmbMode.SelectedIndex = 1; TxtTargetRpm.Text = "800"; });
-                SendOnce(id);
+                SendSetOnce(id, 800);
             }
         }
 
@@ -37,17 +36,16 @@ namespace Ffu.Master
         {
             if (sender is CheckBox cb && TryGetId(cb.Tag, out int id))
             {
-                // Set 모드 + 0
-                Dispatcher.Invoke(() => { CmbMode.SelectedIndex = 1; TxtTargetRpm.Text = "0"; });
-                SendOnce(id);
+                SendSetOnce(id, 0);
             }
         }
         private void OnUpClick(object sender, RoutedEventArgs e)
         {
             if (sender is FrameworkElement fe && TryGetId(fe.Tag, out int id))
             {
-                var rpm = GetCurrentRpm(id);
-                SetIdRpmAndSend(id, rpm + 100);
+                var rpm = Math.Clamp(GetCurrentRpm(id) + 100, 0, 1500);
+                if (FindName($"TxtRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
+                SendSetOnce(id, rpm);
             }
         }
 
@@ -56,8 +54,9 @@ namespace Ffu.Master
         {
             if (sender is FrameworkElement fe && TryGetId(fe.Tag, out int id))
             {
-                var rpm = GetCurrentRpm(id);
-                SetIdRpmAndSend(id, rpm - 100);
+                var rpm = Math.Clamp(GetCurrentRpm(id) - 100, 0, 1500);
+                if (FindName($"TxtRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
+                SendSetOnce(id, rpm);
             }
         }
 
@@ -174,7 +173,36 @@ namespace Ffu.Master
             }
         }
 
-
+        private void SendSetOnce(int id, int rpm)
+    {
+        if (_port == null || !_port.IsOpen) { Log("Port not open"); return; }
+        rpm = Math.Clamp(rpm, 0, 1500);
+        var req = new byte[7];
+        req[0] = 0x49; req[1] = 0x53; req[2] = (byte) id; req[3] = 0x06;
+        var(lo, hi) = EncodeRpmLE(rpm);
+        req[4] = lo; req[5] = hi; req[6] = SumChecksum(req, 6);
+        try
+        {
+            lock (_ioSync) // 루프와 충돌 방지
+            {
+                _port.Write(req, 0, req.Length);
+                Log($"> {Hex(req)}");
+                // (옵션) 간단 응답 로깅
+                try
+                {
+                    var buf = new byte[32];
+                    int got = _port.Read(buf, 0, buf.Length);
+                    if (got >= 9 && buf[0] == 0x44 && buf[1] == 0x54)
+                    {
+                        if (buf[8] == SumChecksum(buf, 8))
+                            Log($"< DT id={buf[2]} cmd=0x{buf[3]:X2} rpm={DecodeRpmLE(buf[6], buf[7])}");
+                    }
+                }
+                catch (TimeoutException) { /* ignore */ }
+            }
+        }
+        catch (Exception ex) { Log($"SetOnce ERR: {ex.Message}"); }
+    }
 
         private void BtnOpen_Click(object sender, RoutedEventArgs e)
         {
@@ -263,8 +291,8 @@ namespace Ffu.Master
                     // 1) UI 값 스냅샷 (크로스스레드 방지)
                     (bool isSet, int targetRpm) = Dispatcher.Invoke(() =>
                     {
-                        bool _isSet = (CmbMode.SelectedIndex == 1);
-                        int rpm = 0; int.TryParse(TxtTargetRpm.Text, out rpm);
+                        bool _isSet = false;
+                        int rpm = 0; 
                         if (rpm < 0) rpm = 0; if (rpm > 1500) rpm = 1500;
                         return (_isSet, rpm);
                     });
