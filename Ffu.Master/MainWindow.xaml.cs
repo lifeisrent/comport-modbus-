@@ -121,7 +121,7 @@ namespace Ffu.Master
                 };
                 _port.Open();
 
-                LoadOrScanIds();
+                ScanSlaveID();
 
                 Log($"OPEN {_port.PortName} 9600");
                 BtnOpen.IsEnabled = false; BtnClose.IsEnabled = true; BtnStart.IsEnabled = true;
@@ -145,6 +145,48 @@ namespace Ffu.Master
 
             BtnStart.IsEnabled = false; BtnStop.IsEnabled = true;
         }
+
+        // 재스캔 버튼 클릭
+        private async void BtnRescan_Click(object sender, RoutedEventArgs e)
+        {
+            if (_port == null || !_port.IsOpen) { Log("[DISC] port not open"); return; }
+
+            // 1) 루프 돌고 있으면 잠깐 멈춤
+            bool wasRunning = _cts != null && _sendTask != null && !_sendTask.IsCompleted;
+            if (wasRunning) { _cts.Cancel(); try { await _sendTask; } catch { } }
+
+            BtnStart.IsEnabled = false; BtnStop.IsEnabled = false;
+
+            try
+            {
+                // 2) 백그라운드 재스캔 (동일 로직 재사용)
+                var ids = await Task.Run(() => SlaveID_ScanSync(start: 1, end: 64, retries: 1, interDelayMs: 8, readTimeoutOverride: 100));
+                // 3) 결과 반영 + 캐시 저장
+                TxtIds.Text = string.Join(",", ids);
+                SaveIdsCache(_port!.PortName, ids);
+                Log($"[DISC] rescan: {TxtIds.Text}");
+            }
+            catch (Exception ex)
+            {
+                Log($"[DISC] rescan err: {ex.Message}");
+            }
+            finally
+            {
+                // 4) 필요하면 루프 재시작
+                if (wasRunning)
+                {
+                    _cts = new CancellationTokenSource();
+                    _sendTask = Task.Run(() => SendLoop(_cts.Token));
+                    BtnStart.IsEnabled = false; BtnStop.IsEnabled = true;
+                }
+                else
+                {
+                    BtnStart.IsEnabled = true; BtnStop.IsEnabled = false;
+                }
+            }
+        }
+
+
         private static List<int> ParseIdSet(string text)
         {
             var set = new SortedSet<int>();

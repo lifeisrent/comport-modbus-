@@ -47,6 +47,8 @@
                 </ComboBox>
                 <TextBlock Text="Target RPM:" VerticalAlignment="Center" Margin="16,0,8,0"/>
                 <TextBox x:Name="TxtTargetRpm" Width="80" Text="0"/>
+                <Button x:Name="BtnRescan" Content="Rescan IDs" Click="BtnRescan_Click" />
+
             </StackPanel>
 
             <TextBox x:Name="TxtLog" Grid.Row="3" IsReadOnly="True" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap" Grid.ColumnSpan="2"/>

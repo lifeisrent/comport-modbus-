@@ -13,7 +13,7 @@ namespace Ffu.Master
         private const string IDS_CACHE_FILE = "ids.json";
 
         // 포트 오픈 성공 직후 한 번 호출
-        private void LoadOrScanIds()
+        private void ScanSlaveID()
         {
             try
             {
@@ -25,7 +25,7 @@ namespace Ffu.Master
                 }
                 else
                 {
-                    var ids = DiscoverIdsSync(start: 1, end: 64, retries: 1, interDelayMs: 8, readTimeoutOverride: 100);
+                    var ids = SlaveID_ScanSync(start: 1, end: 64, retries: 1, interDelayMs: 8, readTimeoutOverride: 100);
                     TxtIds.Text = string.Join(",", ids);
                     SaveIdsCache(_port!.PortName, ids);
                     Log($"[DISC] scan complete: {TxtIds.Text}");
@@ -38,7 +38,7 @@ namespace Ffu.Master
         }
 
         // 동기 스캔: READ(0x05)로 1..N 탐색 → 응답 있으면 활성
-        private List<int> DiscoverIdsSync(int start, int end, int retries, int interDelayMs, int? readTimeoutOverride)
+        private List<int> SlaveID_ScanSync(int start, int end, int retries, int interDelayMs, int? readTimeoutOverride)
         {
             var found = new List<int>();
             if (_port == null || !_port.IsOpen) return found;
