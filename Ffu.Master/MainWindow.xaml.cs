@@ -4,11 +4,14 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Controls;
 
 namespace Ffu.Master
 {
     public partial class MainWindow : Window
     {
+        private readonly object _ioSync = new object();
+
         private SerialPort? _port;
         private CancellationTokenSource? _cts;
         private Task? _sendTask;
@@ -19,6 +22,104 @@ namespace Ffu.Master
             InitializeComponent();
             Closed += (_, __) => Cleanup();
         }
+
+        private void OnRbChecked(object sender, RoutedEventArgs e)
+        {
+            if (sender is RadioButton rb && rb.Tag is int id)
+            {
+                // UI 상태를 SendLoop와 동일하게 맞춘다 (Set 모드 + 800RPM)
+                Dispatcher.Invoke(() => { CmbMode.SelectedIndex = 1; TxtTargetRpm.Text = "800"; });
+                SendOnce(id);
+            }
+        }
+
+        private void OnRbUnchecked(object sender, RoutedEventArgs e)
+        {
+            if (sender is RadioButton rb && rb.Tag is int id)
+            {
+                // Set 모드 + 0RPM
+                Dispatcher.Invoke(() => { CmbMode.SelectedIndex = 1; TxtTargetRpm.Text = "0"; });
+                SendOnce(id);
+            }
+        }
+        private void SendOnce(int id)
+        {
+            if (_port == null || !_port.IsOpen) { Log("Port not open"); return; }
+
+            // SendLoop와 동일하게 UI에서 isSet/targetRpm 스냅샷
+            (bool isSet, int targetRpm) = Dispatcher.Invoke(() =>
+            {
+                bool _isSet = (CmbMode.SelectedIndex == 1);
+                int rpm = 0; int.TryParse(TxtTargetRpm.Text, out rpm);
+                if (rpm < 0) rpm = 0; if (rpm > 1500) rpm = 1500;
+                return (_isSet, rpm);
+            });
+
+            // 7바이트 공통 프레임
+            var req = new byte[7];
+            req[0] = 0x49; // 'I'
+            req[1] = 0x53; // 'S'
+            req[2] = (byte)id;
+
+            if (isSet)
+            {
+                // CMD 0x06 + 타겟 RPM(LE) — SendLoop와 동일
+                req[3] = 0x06;
+                var (lo, hi) = EncodeRpmLE(targetRpm);
+                req[4] = lo;
+                req[5] = hi;
+            }
+            else
+            {
+                // CMD 0x05 (Request)
+                req[3] = 0x05;
+                req[4] = 0x00;
+                req[5] = 0x00;
+            }
+
+            req[6] = SumChecksum(req, 6); // CS 제외 합의 LSB
+
+            try
+            {
+                _port.Write(req, 0, req.Length);
+                Log($"> {Hex(req)}");
+
+                // (선택) 응답 한 번 읽어서 간단히 로깅 — SendLoop와 동일 패턴
+                try
+                {
+                    var buf = new byte[32];
+                    int got = _port.Read(buf, 0, buf.Length); // ReadTimeout=200ms
+                    if (got >= 9 && buf[0] == 0x44 && buf[1] == 0x54) // 'D','T'
+                    {
+                        byte rid = buf[2];
+                        byte rcmd = buf[3];
+                        byte lo = buf[6], hi = buf[7];
+                        byte cs = buf[8];
+                        byte calc = SumChecksum(buf, 8);
+                        if (cs == calc)
+                        {
+                            int rrpm = DecodeRpmLE(lo, hi);
+                            Log($"< DT ID={rid} CMD=0x{rcmd:X2} RPM={rrpm} [{Hex(buf.AsSpan(0, got))}]");
+                        }
+                        else
+                        {
+                            Log($"< CS ERR [{Hex(buf.AsSpan(0, got))}]");
+                        }
+                    }
+                    else if (got > 0)
+                    {
+                        Log($"< {Hex(buf.AsSpan(0, got))}");
+                    }
+                }
+                catch (TimeoutException) { /* ignore */ }
+            }
+            catch (Exception ex)
+            {
+                Log($"SendOnce ERR: {ex.Message}");
+            }
+        }
+
+
 
         private void BtnOpen_Click(object sender, RoutedEventArgs e)
         {
