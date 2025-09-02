@@ -19,7 +19,6 @@ namespace Ffu.Slave
         private CancellationTokenSource? _cts;
         private Task? _loopTask;
         private HashSet<int> _idSet = new();
-        private int _rpmCache; // 0~1500
         public ObservableCollection<WatchSlot> WatchSlots { get; } = new();
 
         // ID→RPM 캐시(수신값 저장)
@@ -30,14 +29,12 @@ namespace Ffu.Slave
             InitializeComponent();
             Closed += (_, __) => Cleanup();
 
-            var s1 = new WatchSlot { WatchId = 1 };
-            var s2 = new WatchSlot { WatchId = 2 };
-            // WatchId 변경되면 현재 캐시값으로 즉시 반영
-            s1.PropertyChanged += WatchSlot_PropertyChanged;
-            s2.PropertyChanged += WatchSlot_PropertyChanged;
-
-            WatchSlots.Add(s1);
-            WatchSlots.Add(s2);
+            for (int id = 1; id <= 6; id++)
+            {
+                var s = new WatchSlot { WatchId = id };
+                s.PropertyChanged += WatchSlot_PropertyChanged;
+                WatchSlots.Add(s);
+            }
 
             if (DataContext == null) DataContext = this;
         }
@@ -157,10 +154,9 @@ namespace Ffu.Slave
                             byte lo = rx[4], hi = rx[5];
                             int rpm = DecodeRpmLE(lo, hi);
                             if (rpm < 0) rpm = 0; if (rpm > 1500) rpm = 1500;
+
                             _rpmById[id] = rpm;
                             UpdateWatchSlotsFor(id, rpm);
-
-                            Volatile.Write(ref _rpmCache, rpm);
                             Log($"SET ID={id} RPM={rpm}");
 
                             // (선택) ACK 응답: 44 54 ID 06 00 00 lo hi CS
@@ -181,7 +177,7 @@ namespace Ffu.Slave
                         {
                             Log($"REQ {Hex(rx, 0, 7)}");
 
-                            int rpm = Volatile.Read(ref _rpmCache);
+                            int rpm = _rpmById.TryGetValue(id, out var r) ? r : 0;
                             _rpmById[id] = rpm;
                             UpdateWatchSlotsFor(id, rpm);
                             var (lo, hi) = EncodeRpmLE(rpm);
