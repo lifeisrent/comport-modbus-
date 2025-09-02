@@ -11,7 +11,7 @@ namespace Ffu.Master
     public partial class MainWindow : Window
     {
         private readonly object _ioSync = new object();
-
+        private readonly Dictionary<int, int> _perTarget = new();
         private SerialPort? _port;
         private CancellationTokenSource? _cts;
         private Task? _sendTask;
@@ -42,7 +42,53 @@ namespace Ffu.Master
                 SendOnce(id);
             }
         }
+        private void OnUpClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && TryGetId(fe.Tag, out int id))
+            {
+                var rpm = GetCurrentRpm(id);
+                SetIdRpmAndSend(id, rpm + 100);
+            }
+        }
 
+        // ↓ 클릭
+        private void OnDownClick(object sender, RoutedEventArgs e)
+        {
+            if (sender is FrameworkElement fe && TryGetId(fe.Tag, out int id))
+            {
+                var rpm = GetCurrentRpm(id);
+                SetIdRpmAndSend(id, rpm - 100);
+            }
+        }
+
+        private int GetCurrentRpm(int id)
+        {
+            if (_perTarget.TryGetValue(id, out var v)) return v;
+            // TextBox를 이름으로 찾아서 파싱 (초기 0)
+            var tb = (TextBox?)FindName($"TxtRpm{id}");
+            if (tb != null && int.TryParse(tb.Text, out var t)) return t;
+            return 0;
+        }
+
+        private void SetIdRpmAndSend(int id, int rpm)
+        {
+            // 0~1500로 클램프(네 코드 규칙)
+            if (rpm < 0) rpm = 0;
+            if (rpm > 1500) rpm = 1500;
+
+            _perTarget[id] = rpm;
+
+            // UI 반영: 해당 TextBox 텍스트 갱신
+            if (FindName($"TxtRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
+
+            // 기존 경로 활용: Set 모드 + TxtTargetRpm에 값 넣고 SendOnce(id)
+            Dispatcher.Invoke(() =>
+            {
+                CmbMode.SelectedIndex = 1;                 // Set 모드
+                TxtTargetRpm.Text = rpm.ToString();        // 기존 로직 재사용
+            });
+            SendOnce(id); // 내부에서 'IS..0x06 + LE + SUM' 전송 및 간단 응답 로그. :contentReference[oaicite:2]{index=2}
+        }
         private static bool TryGetId(object? tag, out int id)
         {
             if (tag is int v) { id = v; return true; }
