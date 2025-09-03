@@ -139,12 +139,12 @@ namespace Ffu.Master
         private void SendSetOnce(int id, int rpm)
         {
             if (_port == null || !_port.IsOpen) { Log("Port not open"); return; }
-            var req = BuildSetFrame(id, rpm);
+            var req = BuildMessage(id, rpm);
             try
             {
                 lock (_ioSync) // 루프와 충돌 방지
                 {
-                    WriteFrame(req);
+                    SendMessage(req);
                     TryReadAndLogOnce();
                 }
             }
@@ -161,11 +161,11 @@ namespace Ffu.Master
                 try
                 {
                     // READ(0x05) only — 배포용 폴링
-                    int id = NextIdOrSkip();
+                    int id = GetId();
                     if (id == 0) continue; // ID 목록 비었음
 
-                    BuildReadFrameInPlace(req, id);
-                    WriteFrame(req);
+                    BuildMessageRead(req, id);
+                    SendMessage(req);
                     TryReadAndLogOnce();   // 단순 로그/표시 (필요 시 UI 업데이트로 확장)
 
                     await Task.Delay(120, ct).ConfigureAwait(false);
@@ -187,8 +187,9 @@ namespace Ffu.Master
             SendSetOnce(id, rpm);
         }
 
-        private int NextIdOrSkip()
+        private int GetId()
         {
+            //NextIdorSkip 
             lock (_ioSync)
             {
                 if (_ids.Count == 0) return 0;
@@ -196,23 +197,23 @@ namespace Ffu.Master
             }
         }
 
-        private static byte[] BuildSetFrame(int id, int rpm)
+        private static byte[] BuildMessage(int id, int rpm)
         {
             rpm = Math.Clamp(rpm, 0, 1500);
             var (lo, hi) = EncodeRpmLE(rpm);
             return new byte[7] { 0x49, 0x53, (byte)id, 0x06, lo, hi, 0 }; 
         }
 
-        private static void BuildReadFrameInPlace(byte[] req, int id)
+        private static void BuildMessageRead(byte[] req, int id)
         {
             req[2] = (byte)id;
             req[3] = 0x05; req[4] = 0x00; req[5] = 0x00;
             req[6] = SumChecksum(req, 6);
         }
 
-        private void WriteFrame(byte[] req)
+        private void SendMessage(byte[] req)
         {
-            // req[6]이 비어있을 수 있으므로 보정
+            // checksum checking included
             req[6] = SumChecksum(req, 6);
             _port!.Write(req, 0, req.Length);
             Log($"> {Hex(req)}");
@@ -239,6 +240,8 @@ namespace Ffu.Master
 
         private bool TryParseDt(byte[] buf, int got, out byte id, out byte cmd, out int rpm)
         {
+            //check header, checksum, and parse rpm ro little endian
+            //try or return false
             id = 0; cmd = 0; rpm = 0;
             if (got < 9) return false;
             if (buf[0] != 0x44 || buf[1] != 0x54) return false; // 'D','T'
