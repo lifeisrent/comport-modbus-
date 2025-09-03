@@ -42,20 +42,12 @@ namespace Ffu.Master
         private void OnUpClick(object sender, RoutedEventArgs e)
         {
             if (sender is FrameworkElement fe && TryGetId(fe.Tag, out int id))
-            {
-                var rpm = Math.Clamp(GetCurrentRpm(id) + 100, 0, 1500);
-                if (FindName($"TxtRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
-                SendSetOnce(id, rpm);
-            }
+                AdjustAndSend(id, +100);
         }
         private void OnDownClick(object sender, RoutedEventArgs e)
         {
             if (sender is FrameworkElement fe && TryGetId(fe.Tag, out int id))
-            {
-                var rpm = Math.Clamp(GetCurrentRpm(id) - 100, 0, 1500);
-                if (FindName($"TxtRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
-                SendSetOnce(id, rpm);
-            }
+                AdjustAndSend(id, -100);
         }
         private void BtnOpen_Click(object sender, RoutedEventArgs e)
         {
@@ -143,32 +135,17 @@ namespace Ffu.Master
         #endregion
 
         #region Send / Loop
+        // 단발 송신 SET(0x06): 프레임 생성 → 송신 → (미구현) 응답 파싱/로그
         private void SendSetOnce(int id, int rpm)
         {
             if (_port == null || !_port.IsOpen) { Log("Port not open"); return; }
-            rpm = Math.Clamp(rpm, 0, 1500);
-            var req = new byte[7];
-            req[0] = 0x49; req[1] = 0x53; req[2] = (byte)id; req[3] = 0x06;
-            var (lo, hi) = EncodeRpmLE(rpm);
-            req[4] = lo; req[5] = hi; req[6] = SumChecksum(req, 6);
+            var req = BuildSetFrame(id, rpm);
             try
             {
                 lock (_ioSync) // 루프와 충돌 방지
                 {
-                    _port.Write(req, 0, req.Length);
-                    Log($"> {Hex(req)}");
-                    // (옵션) 간단 응답 로깅
-                    try
-                    {
-                        var buf = new byte[32];
-                        int got = _port.Read(buf, 0, buf.Length);
-                        if (got >= 9 && buf[0] == 0x44 && buf[1] == 0x54)
-                        {
-                            if (buf[8] == SumChecksum(buf, 8))
-                                Log($"< DT id={buf[2]} cmd=0x{buf[3]:X2} rpm={DecodeRpmLE(buf[6], buf[7])}");
-                        }
-                    }
-                    catch (TimeoutException) { /* ignore */ }
+                    WriteFrame(req);
+                    TryReadAndLogOnce();
                 }
             }
             catch (Exception ex) { Log($"SetOnce ERR: {ex.Message}"); }
@@ -177,81 +154,19 @@ namespace Ffu.Master
         private async Task SendLoop(CancellationToken ct)
         {
             // 공통 프레임 버퍼 (7바이트 고정)
-            var req = new byte[7];
-            req[0] = 0x49; // 'I'
-            req[1] = 0x53; // 'S'
+            var req = new byte[7] { 0x49, 0x53, 0, 0, 0, 0, 0 }; // 'I','S'
 
             while (!ct.IsCancellationRequested)
             {
                 try
                 {
-                    // 1) write 계속 보내기 (콤보박스 선택)
-                    //(bool isSet, int targetRpm) = Dispatcher.Invoke(() =>
-                    //{
-                    //    bool _isSet = (CmbMode == 1);
-                    //    int rpm = 0; 
-                    //    if (rpm < 0) rpm = 0; if (rpm > 1500) rpm = 1500;
-                    //    return (_isSet, rpm);
-                    //});
-                    bool isSet = false;
-                    int targetRpm = 0;
-                    int id;
-                    lock (_ioSync)
-                    {
-                        if (_ids.Count == 0) continue; // 혹시 비었으면 skip
-                        id = _ids[_cursor++ % _ids.Count];
-                    }
-                    req[2] = (byte)id;
+                    // READ(0x05) only — 배포용 폴링
+                    int id = NextIdOrSkip();
+                    if (id == 0) continue; // ID 목록 비었음
 
-                    if (isSet)
-                    {
-                        // CMD 0x06 + 타겟 RPM(LE)
-                        req[3] = 0x06;
-                        var (lo, hi) = EncodeRpmLE(targetRpm);
-                        req[4] = lo;   // LSB
-                        req[5] = hi;   // MSB
-                    }
-                    else
-                    {
-                        // CMD 0x05 (Request)
-                        req[3] = 0x05;
-                        req[4] = 0x00;
-                        req[5] = 0x00;
-                    }
-
-                    req[6] = SumChecksum(req, 6); // CS 제외 합의 LSB
-
-                    _port!.Write(req, 0, req.Length);
-                    Log($"> {Hex(req)}");
-
-                    // (옵션) 응답 파싱 — 단순형(부분 프레임은 그냥 로그)
-                    try
-                    {
-                        var buf = new byte[32];
-                        int got = _port.Read(buf, 0, buf.Length); // ReadTimeout=200ms
-                        if (got >= 9 && buf[0] == 0x44 && buf[1] == 0x54) // 'D','T'
-                        {
-                            byte rid = buf[2];
-                            byte rcmd = buf[3];
-                            byte lo = buf[6], hi = buf[7];
-                            byte cs = buf[8];
-                            byte calc = SumChecksum(buf, 8);
-                            if (cs == calc)
-                            {
-                                int rrpm = DecodeRpmLE(lo, hi);
-                                Log($"< DT ID={rid} CMD=0x{rcmd:X2} RPM={rrpm} [{Hex(buf.AsSpan(0, got))}]");
-                            }
-                            else
-                            {
-                                Log($"< CS ERR [{Hex(buf.AsSpan(0, got))}]");
-                            }
-                        }
-                        else if (got > 0)
-                        {
-                            Log($"< {Hex(buf.AsSpan(0, got))}");
-                        }
-                    }
-                    catch (TimeoutException) { /* ignore */ }
+                    BuildReadFrameInPlace(req, id);
+                    WriteFrame(req);
+                    TryReadAndLogOnce();   // 단순 로그/표시 (필요 시 UI 업데이트로 확장)
 
                     await Task.Delay(120, ct).ConfigureAwait(false);
                 }
@@ -264,22 +179,75 @@ namespace Ffu.Master
             }
         }
 
-        private int GetCurrentRpm(int id)
+        // ── 공통 유틸 (프레임 빌드/송수신/파싱/증감) ─────────────────────────
+        private void AdjustAndSend(int id, int delta)
         {
-            if (_perTarget.TryGetValue(id, out var v)) return v;
-            // TextBox를 이름으로 찾아서 파싱 (초기 0)
-            var tb = (TextBox?)FindName($"TxtRpm{id}");
-            if (tb != null && int.TryParse(tb.Text, out var t)) return t;
-            return 0;
+            var rpm = Math.Clamp(GetCurrentRpm(id) + delta, 0, 1500);
+            if (FindName($"TxtRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
+            SendSetOnce(id, rpm);
         }
 
-        private static bool TryGetId(object? tag, out int id)
+        private int NextIdOrSkip()
         {
-            if (tag is int v) { id = v; return true; }
-            if (int.TryParse(tag?.ToString(), out v)) { id = v; return true; }
-            id = 0; return false;
+            lock (_ioSync)
+            {
+                if (_ids.Count == 0) return 0;
+                return _ids[_cursor++ % _ids.Count];
+            }
         }
 
+        private static byte[] BuildSetFrame(int id, int rpm)
+        {
+            rpm = Math.Clamp(rpm, 0, 1500);
+            var (lo, hi) = EncodeRpmLE(rpm);
+            return new byte[7] { 0x49, 0x53, (byte)id, 0x06, lo, hi, 0 }; 
+        }
+
+        private static void BuildReadFrameInPlace(byte[] req, int id)
+        {
+            req[2] = (byte)id;
+            req[3] = 0x05; req[4] = 0x00; req[5] = 0x00;
+            req[6] = SumChecksum(req, 6);
+        }
+
+        private void WriteFrame(byte[] req)
+        {
+            // req[6]이 비어있을 수 있으므로 보정
+            req[6] = SumChecksum(req, 6);
+            _port!.Write(req, 0, req.Length);
+            Log($"> {Hex(req)}");
+        }
+
+        private void TryReadAndLogOnce()
+        {
+            try
+            {
+                var buf = new byte[32];
+                int got = _port!.Read(buf, 0, buf.Length);
+                if (TryParseDt(buf, got, out byte rid, out byte cmd, out int rrpm))
+                {
+                    Log($"< DT ID={rid} CMD=0x{cmd:X2} RPM={rrpm} [{Hex(buf.AsSpan(0, got))}]");
+                    // 필요 시: UpdateRpmReadUI(rid, rrpm);
+                }
+                else if (got > 0)
+                {
+                    Log($"< {Hex(buf.AsSpan(0, got))}");
+                }
+            }
+            catch (TimeoutException) { /* ignore */ }
+        }
+
+        private bool TryParseDt(byte[] buf, int got, out byte id, out byte cmd, out int rpm)
+        {
+            id = 0; cmd = 0; rpm = 0;
+            if (got < 9) return false;
+            if (buf[0] != 0x44 || buf[1] != 0x54) return false; // 'D','T'
+            if (buf[8] != SumChecksum(buf, 8)) return false;
+            id = buf[2];
+            cmd = buf[3];
+            rpm = DecodeRpmLE(buf[6], buf[7]);
+            return true;
+        }
         #endregion
 
         #region Utils : Parsing, Checksum, Hex
@@ -343,6 +311,14 @@ namespace Ffu.Master
         }
         #endregion
 
+        private int GetCurrentRpm(int id)
+        {
+            if (_perTarget.TryGetValue(id, out var v)) return v;
+            // TextBox를 이름으로 찾아서 파싱 (초기 0)
+            var tb = (TextBox?)FindName($"TxtRpm{id}");
+            if (tb != null && int.TryParse(tb.Text, out var t)) return t;
+            return 0;
+        }
 
         private void Cleanup()
         {
@@ -351,6 +327,13 @@ namespace Ffu.Master
             _cts = null; _sendTask = null; _port = null;
             BtnOpen.IsEnabled = true; BtnClose.IsEnabled = false; BtnStart.IsEnabled = false; BtnStop.IsEnabled = false;
             Log("CLOSED");
+        }
+
+        private static bool TryGetId(object? tag, out int id)
+        {
+            if (tag is int v) { id = v; return true; }
+            if (int.TryParse(tag?.ToString(), out v)) { id = v; return true; }
+            id = 0; return false;
         }
     }
 }
