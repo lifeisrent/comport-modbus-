@@ -109,6 +109,7 @@ namespace Ffu.Master
                 // 3) 결과 반영 + 캐시 저장
                 TxtIds.Text = string.Join(",", ids);
                 SaveIdsCache(_port!.PortName, ids);
+                lock (_ioSync) { _ids = new List<int>(ids); } // <== 추가
                 Log($"[DISC] rescan: {TxtIds.Text}");
             }
             catch (Exception ex)
@@ -194,8 +195,12 @@ namespace Ffu.Master
                     //});
                     bool isSet = false;
                     int targetRpm = 0;
-                    // 라운드로빈 ID
-                    int id = _ids[_cursor++ % _ids.Count];
+                    int id;
+                    lock (_ioSync)
+                    {
+                        if (_ids.Count == 0) continue; // 혹시 비었으면 skip
+                        id = _ids[_cursor++ % _ids.Count];
+                    }
                     req[2] = (byte)id;
 
                     if (isSet)
