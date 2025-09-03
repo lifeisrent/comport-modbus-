@@ -25,6 +25,7 @@ namespace Ffu.Master
                 }
                 else
                 {
+                    //초기 1~64 스캔 딜레이는 실제 환경에서 테스트하여 조정 필요 250903 smlee
                     var ids = SlaveID_ScanSync(start: 1, end: 64, retries: 1, interDelayMs: 8, readTimeoutOverride: 100);
                     TxtIds.Text = string.Join(",", ids);
                     SaveIdsCache(_port!.PortName, ids);

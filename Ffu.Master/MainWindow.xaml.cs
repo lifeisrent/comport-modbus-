@@ -24,6 +24,7 @@ namespace Ffu.Master
             Closed += (_, __) => Cleanup();
         }
 
+        #region Control Events : Click, Checked, Log
         private void OnChkChecked(object sender, RoutedEventArgs e)
         {
             if (sender is CheckBox cb && TryGetId(cb.Tag, out int id))
@@ -31,7 +32,6 @@ namespace Ffu.Master
                 SendSetOnce(id, 800);
             }
         }
-
         private void OnChkUnchecked(object sender, RoutedEventArgs e)
         {
             if (sender is CheckBox cb && TryGetId(cb.Tag, out int id))
@@ -48,8 +48,6 @@ namespace Ffu.Master
                 SendSetOnce(id, rpm);
             }
         }
-
-        // ↓ 클릭
         private void OnDownClick(object sender, RoutedEventArgs e)
         {
             if (sender is FrameworkElement fe && TryGetId(fe.Tag, out int id))
@@ -59,55 +57,6 @@ namespace Ffu.Master
                 SendSetOnce(id, rpm);
             }
         }
-
-        private int GetCurrentRpm(int id)
-        {
-            if (_perTarget.TryGetValue(id, out var v)) return v;
-            // TextBox를 이름으로 찾아서 파싱 (초기 0)
-            var tb = (TextBox?)FindName($"TxtRpm{id}");
-            if (tb != null && int.TryParse(tb.Text, out var t)) return t;
-            return 0;
-        }
-
-        private static bool TryGetId(object? tag, out int id)
-        {
-            if (tag is int v) { id = v; return true; }
-            if (int.TryParse(tag?.ToString(), out v)) { id = v; return true; }
-            id = 0; return false;
-        }
-
-
-        private void SendSetOnce(int id, int rpm)
-    {
-        if (_port == null || !_port.IsOpen) { Log("Port not open"); return; }
-        rpm = Math.Clamp(rpm, 0, 1500);
-        var req = new byte[7];
-        req[0] = 0x49; req[1] = 0x53; req[2] = (byte) id; req[3] = 0x06;
-        var(lo, hi) = EncodeRpmLE(rpm);
-        req[4] = lo; req[5] = hi; req[6] = SumChecksum(req, 6);
-        try
-        {
-            lock (_ioSync) // 루프와 충돌 방지
-            {
-                _port.Write(req, 0, req.Length);
-                Log($"> {Hex(req)}");
-                // (옵션) 간단 응답 로깅
-                try
-                {
-                    var buf = new byte[32];
-                    int got = _port.Read(buf, 0, buf.Length);
-                    if (got >= 9 && buf[0] == 0x44 && buf[1] == 0x54)
-                    {
-                        if (buf[8] == SumChecksum(buf, 8))
-                            Log($"< DT id={buf[2]} cmd=0x{buf[3]:X2} rpm={DecodeRpmLE(buf[6], buf[7])}");
-                    }
-                }
-                catch (TimeoutException) { /* ignore */ }
-            }
-        }
-        catch (Exception ex) { Log($"SetOnce ERR: {ex.Message}"); }
-    }
-
         private void BtnOpen_Click(object sender, RoutedEventArgs e)
         {
             try
@@ -128,12 +77,10 @@ namespace Ffu.Master
             }
             catch (Exception ex) { Log($"Open FAIL: {ex.Message}"); }
         }
-
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
             Cleanup();
         }
-
         private void BtnStart_Click(object sender, RoutedEventArgs e)
         {
             if (_port == null || !_port.IsOpen) { Log("Port not open"); return; }
@@ -145,8 +92,6 @@ namespace Ffu.Master
 
             BtnStart.IsEnabled = false; BtnStop.IsEnabled = true;
         }
-
-        // 재스캔 버튼 클릭
         private async void BtnRescan_Click(object sender, RoutedEventArgs e)
         {
             if (_port == null || !_port.IsOpen) { Log("[DISC] port not open"); return; }
@@ -185,44 +130,47 @@ namespace Ffu.Master
                 }
             }
         }
-
-
-        private static List<int> ParseIdSet(string text)
-        {
-            var set = new SortedSet<int>();
-            if (string.IsNullOrWhiteSpace(text)) return new List<int>();
-            foreach (var tok in text.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries))
-            {
-                if (tok.Contains('-'))
-                {
-                    var p = tok.Split('-', 2, StringSplitOptions.RemoveEmptyEntries);
-                    if (p.Length == 2 && int.TryParse(p[0], out var a) && int.TryParse(p[1], out var b))
-                    {
-                        if (a > b) (a, b) = (b, a);
-                        for (int i = a; i <= b; i++) if (i >= 1 && i <= 64) set.Add(i);
-                    }
-                }
-                else if (int.TryParse(tok, out var v) && v >= 1 && v <= 64)
-                {
-                    set.Add(v);
-                }
-            }
-            return new List<int>(set);
-        }
-        // RPM 인코딩/디코딩 (리틀엔디언)
-        static (byte lo, byte hi) EncodeRpmLE(int rpm)
-        {
-            if (rpm < 0) rpm = 0;
-            if (rpm > 1500) rpm = 1500;
-            return ((byte)(rpm & 0xFF), (byte)((rpm >> 8) & 0xFF));
-        }
-        static int DecodeRpmLE(byte lo, byte hi) => (hi << 8) | lo;
-
-
         private void BtnStop_Click(object sender, RoutedEventArgs e)
         {
             _cts?.Cancel();
             BtnStart.IsEnabled = true; BtnStop.IsEnabled = false;
+        }
+        private void Log(string s)
+        {
+            Dispatcher.Invoke(() => { TxtLog.AppendText(s + Environment.NewLine); TxtLog.ScrollToEnd(); });
+        }
+        #endregion
+
+        #region Send / Loop
+        private void SendSetOnce(int id, int rpm)
+        {
+            if (_port == null || !_port.IsOpen) { Log("Port not open"); return; }
+            rpm = Math.Clamp(rpm, 0, 1500);
+            var req = new byte[7];
+            req[0] = 0x49; req[1] = 0x53; req[2] = (byte)id; req[3] = 0x06;
+            var (lo, hi) = EncodeRpmLE(rpm);
+            req[4] = lo; req[5] = hi; req[6] = SumChecksum(req, 6);
+            try
+            {
+                lock (_ioSync) // 루프와 충돌 방지
+                {
+                    _port.Write(req, 0, req.Length);
+                    Log($"> {Hex(req)}");
+                    // (옵션) 간단 응답 로깅
+                    try
+                    {
+                        var buf = new byte[32];
+                        int got = _port.Read(buf, 0, buf.Length);
+                        if (got >= 9 && buf[0] == 0x44 && buf[1] == 0x54)
+                        {
+                            if (buf[8] == SumChecksum(buf, 8))
+                                Log($"< DT id={buf[2]} cmd=0x{buf[3]:X2} rpm={DecodeRpmLE(buf[6], buf[7])}");
+                        }
+                    }
+                    catch (TimeoutException) { /* ignore */ }
+                }
+            }
+            catch (Exception ex) { Log($"SetOnce ERR: {ex.Message}"); }
         }
 
         private async Task SendLoop(CancellationToken ct)
@@ -236,15 +184,16 @@ namespace Ffu.Master
             {
                 try
                 {
-                    // 1) UI 값 스냅샷 (크로스스레드 방지)
-                    (bool isSet, int targetRpm) = Dispatcher.Invoke(() =>
-                    {
-                        bool _isSet = false;
-                        int rpm = 0; 
-                        if (rpm < 0) rpm = 0; if (rpm > 1500) rpm = 1500;
-                        return (_isSet, rpm);
-                    });
-
+                    // 1) write 계속 보내기 (콤보박스 선택)
+                    //(bool isSet, int targetRpm) = Dispatcher.Invoke(() =>
+                    //{
+                    //    bool _isSet = (CmbMode == 1);
+                    //    int rpm = 0; 
+                    //    if (rpm < 0) rpm = 0; if (rpm > 1500) rpm = 1500;
+                    //    return (_isSet, rpm);
+                    //});
+                    bool isSet = false;
+                    int targetRpm = 0;
                     // 라운드로빈 ID
                     int id = _ids[_cursor++ % _ids.Count];
                     req[2] = (byte)id;
@@ -310,6 +259,57 @@ namespace Ffu.Master
             }
         }
 
+        private int GetCurrentRpm(int id)
+        {
+            if (_perTarget.TryGetValue(id, out var v)) return v;
+            // TextBox를 이름으로 찾아서 파싱 (초기 0)
+            var tb = (TextBox?)FindName($"TxtRpm{id}");
+            if (tb != null && int.TryParse(tb.Text, out var t)) return t;
+            return 0;
+        }
+
+        private static bool TryGetId(object? tag, out int id)
+        {
+            if (tag is int v) { id = v; return true; }
+            if (int.TryParse(tag?.ToString(), out v)) { id = v; return true; }
+            id = 0; return false;
+        }
+
+        #endregion
+
+        #region Utils : Parsing, Checksum, Hex
+        private static List<int> ParseIdSet(string text)
+        {
+            var set = new SortedSet<int>();
+            if (string.IsNullOrWhiteSpace(text)) return new List<int>();
+            foreach (var tok in text.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (tok.Contains('-'))
+                {
+                    var p = tok.Split('-', 2, StringSplitOptions.RemoveEmptyEntries);
+                    if (p.Length == 2 && int.TryParse(p[0], out var a) && int.TryParse(p[1], out var b))
+                    {
+                        if (a > b) (a, b) = (b, a);
+                        for (int i = a; i <= b; i++) if (i >= 1 && i <= 64) set.Add(i);
+                    }
+                }
+                else if (int.TryParse(tok, out var v) && v >= 1 && v <= 64)
+                {
+                    set.Add(v);
+                }
+            }
+            return new List<int>(set);
+        }
+        // RPM 인코딩/디코딩 (리틀엔디언)
+        static (byte lo, byte hi) EncodeRpmLE(int rpm)
+        {
+            if (rpm < 0) rpm = 0;
+            if (rpm > 1500) rpm = 1500;
+            return ((byte)(rpm & 0xFF), (byte)((rpm >> 8) & 0xFF));
+        }
+        static int DecodeRpmLE(byte lo, byte hi) => (hi << 8) | lo;
+
+
         static byte SumChecksum(ReadOnlySpan<byte> frame)
         {
             int sum = 0;
@@ -321,7 +321,7 @@ namespace Ffu.Master
         static byte SumChecksum(byte[] frame, int len)
             => SumChecksum(frame.AsSpan(0, len));
 
-        // ③ List<byte> 범위용 (슬레이브에서 rx 쓰면 편함)
+        // ③ List<byte> 범위용 
         static byte SumChecksum(List<byte> src, int offset, int length)
         {
             int sum = 0;
@@ -336,6 +336,8 @@ namespace Ffu.Master
             for (int i = 0; i < span.Length; i++) sb.Append(span[i].ToString("X2")).Append(' ');
             return sb.ToString().TrimEnd();
         }
+        #endregion
+
 
         private void Cleanup()
         {
@@ -344,11 +346,6 @@ namespace Ffu.Master
             _cts = null; _sendTask = null; _port = null;
             BtnOpen.IsEnabled = true; BtnClose.IsEnabled = false; BtnStart.IsEnabled = false; BtnStop.IsEnabled = false;
             Log("CLOSED");
-        }
-
-        private void Log(string s)
-        {
-            Dispatcher.Invoke(() => { TxtLog.AppendText(s + Environment.NewLine); TxtLog.ScrollToEnd(); });
         }
     }
 }

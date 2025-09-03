@@ -12,7 +12,46 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
 
-        <Grid Margin="12" Grid.Row="0" Grid.Column="0" Height="272" Width="535" HorizontalAlignment="Left" VerticalAlignment="Top">
+        <Grid Margin="12" Grid.Row="0" Grid.Column="0" Height="252" Width="535" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <!-- Current RPM (Read) 표시 영역 -->
+            <GroupBox Header="Current RPM (Read)" Margin="8">
+                <UniformGrid Rows="1" Columns="6">
+                    <StackPanel Margin="4">
+                        <TextBlock Text="ID 1" HorizontalAlignment="Center"/>
+                        <TextBox x:Name="TxtCurRpm1" IsReadOnly="True" Width="70"
+               HorizontalContentAlignment="Right" Text="-" />
+                    </StackPanel>
+                    <StackPanel Margin="4">
+                        <TextBlock Text="ID 2" HorizontalAlignment="Center"/>
+                        <TextBox x:Name="TxtCurRpm2" IsReadOnly="True" Width="70"
+               HorizontalContentAlignment="Right" Text="-" />
+                    </StackPanel>
+                    <StackPanel Margin="4">
+                        <TextBlock Text="ID 3" HorizontalAlignment="Center"/>
+                        <TextBox x:Name="TxtCurRpm3" IsReadOnly="True" Width="70"
+               HorizontalContentAlignment="Right" Text="-" />
+                    </StackPanel>
+                    <StackPanel Margin="4">
+                        <TextBlock Text="ID 4" HorizontalAlignment="Center"/>
+                        <TextBox x:Name="TxtCurRpm4" IsReadOnly="True" Width="70"
+               HorizontalContentAlignment="Right" Text="-" />
+                    </StackPanel>
+                    <StackPanel Margin="4">
+                        <TextBlock Text="ID 5" HorizontalAlignment="Center"/>
+                        <TextBox x:Name="TxtCurRpm5" IsReadOnly="True" Width="70"
+               HorizontalContentAlignment="Right" Text="-" />
+                    </StackPanel>
+                    <StackPanel Margin="4">
+                        <TextBlock Text="ID 6" HorizontalAlignment="Center"/>
+                        <TextBox x:Name="TxtCurRpm6" IsReadOnly="True" Width="70"
+               HorizontalContentAlignment="Right" Text="-" />
+                    </StackPanel>
+                </UniformGrid>
+            </GroupBox>
+
+        </Grid>
+
+        <Grid Margin="12" Grid.Row="1" Grid.Column="0" Height="272" Width="535" HorizontalAlignment="Left" VerticalAlignment="Bottom">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="11*"/>
                 <ColumnDefinition Width="525*"/>
@@ -43,7 +82,7 @@
                 <TextBlock Text="Mode:" VerticalAlignment="Center" Margin="0,0,8,0"/>
                 <ComboBox x:Name="CmbMode" Width="120">
                     <ComboBoxItem Content="Request (0x05)" IsSelected="True"/>
-                    <ComboBoxItem Content="Set RPM (0x06)"/>
+                    <!--<ComboBoxItem Content="Set RPM (0x06)"/>-->
                 </ComboBox>
                 <TextBlock Text="Target RPM:" VerticalAlignment="Center" Margin="16,0,8,0"/>
                 <TextBox x:Name="TxtTargetRpm" Width="80" Text="0"/>
