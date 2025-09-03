@@ -297,7 +297,7 @@ namespace Ffu.Master
                 if (TryParseDt(buf, got, out byte rid, out byte cmd, out int rrpm))
                 {
                     Log($"< DT ID={rid} CMD=0x{cmd:X2} RPM={rrpm} [{Hex(buf.AsSpan(0, got))}]");
-                    // 필요 시: UpdateRpmReadUI(rid, rrpm);
+                    UpdateRpmReadUI(rid, rrpm); // ← 추가
                 }
                 else if (got > 0)
                 {
@@ -345,6 +345,20 @@ namespace Ffu.Master
             if (tag is int v) { id = v; return true; }
             if (int.TryParse(tag?.ToString(), out v)) { id = v; return true; }
             id = 0; return false;
+        }
+
+        // 실제 UI 반영 함수 추가
+        private void UpdateRpmReadUI(int id, int rpm)
+        {
+            // 1~6번만 반영 (TextBox 이름: TxtCurRpm1 ~ TxtCurRpm6)
+            if (id >= 1 && id <= 6)
+            {
+                Dispatcher.Invoke(() =>
+                {
+                    if (FindName($"TxtCurRpm{id}") is TextBox tb)
+                        tb.Text = rpm.ToString();
+                });
+            }
         }
     }
 }
