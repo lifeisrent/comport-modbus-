@@ -96,6 +96,8 @@
         <Grid Grid.Row="0" Grid.Column="1" >
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
             </Grid.RowDefinitions>
             <UniformGrid Grid.Row="0" Rows="1" Columns="6" Margin="8">
@@ -165,20 +167,28 @@
     </StackPanel>
   </StackPanel>
             </UniformGrid>
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="8">
-            <CheckBox Content="ID 1 (800/0)" Tag="1"
+            <UniformGrid Grid.Row="1" Columns="6" Margin="8">
+                    <CheckBox Content="ID 1 (800/0)" Tag="1"
             Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
-            <CheckBox Content="ID 2 (800/0)" Tag="2"
+                    <CheckBox Content="ID 2 (800/0)" Tag="2"
             Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
-            <CheckBox Content="ID 3 (800/0)" Tag="3"
+                    <CheckBox Content="ID 3 (800/0)" Tag="3"
             Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
-            <CheckBox Content="ID 4 (800/0)" Tag="4"
+                    <CheckBox Content="ID 4 (800/0)" Tag="4"
             Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
-            <CheckBox Content="ID 5 (800/0)" Tag="5"
+                    <CheckBox Content="ID 5 (800/0)" Tag="5"
             Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
-            <CheckBox Content="ID 6 (800/0)" Tag="6"
+                    <CheckBox Content="ID 6 (800/0)" Tag="6"
             Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
-        </StackPanel>
+            </UniformGrid>
+            <UniformGrid Grid.Row="2" Columns="6" Margin="8">
+                <Ellipse x:Name="StatusCircle1" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
+                <Ellipse x:Name="StatusCircle2" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
+                <Ellipse x:Name="StatusCircle3" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
+                <Ellipse x:Name="StatusCircle4" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
+                <Ellipse x:Name="StatusCircle5" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
+                <Ellipse x:Name="StatusCircle6" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
+            </UniformGrid>
         </Grid>
     </Grid>
     

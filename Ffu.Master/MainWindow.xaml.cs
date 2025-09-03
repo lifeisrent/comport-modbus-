@@ -383,5 +383,20 @@ namespace Ffu.Master
             var obj = new { port, rpmById, ts = DateTime.Now };
             File.WriteAllText($"rpm_{port}.json", JsonSerializer.Serialize(obj));
         }
+
+        public enum FfuStatus { None, Good, Error }
+
+        private void SetStatusCircle(int id, FfuStatus status)
+        {
+            if (id < 1 || id > 6) return;
+            var ellipse = FindName($"StatusCircle{id}") as System.Windows.Shapes.Ellipse;
+            if (ellipse == null) return;
+            switch (status)
+            {
+                case FfuStatus.Good:  ellipse.Fill = System.Windows.Media.Brushes.LimeGreen; break;
+                case FfuStatus.Error: ellipse.Fill = System.Windows.Media.Brushes.Red; break;
+                case FfuStatus.None:  ellipse.Fill = System.Windows.Media.Brushes.Gray; break;
+            }
+        }
     }
 }
