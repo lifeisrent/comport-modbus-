@@ -178,79 +178,6 @@ namespace Ffu.Master
                 }
             }
         }
-
-        // ── 공통 유틸 (프레임 빌드/송수신/파싱/증감) ─────────────────────────
-        private void AdjustAndSend(int id, int delta)
-        {
-            var rpm = Math.Clamp(GetCurrentRpm(id) + delta, 0, 1500);
-            if (FindName($"TxtRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
-            SendSetOnce(id, rpm);
-        }
-
-        private int GetId()
-        {
-            //NextIdorSkip 
-            lock (_ioSync)
-            {
-                if (_ids.Count == 0) return 0;
-                return _ids[_cursor++ % _ids.Count];
-            }
-        }
-
-        private static byte[] BuildMessage(int id, int rpm)
-        {
-            rpm = Math.Clamp(rpm, 0, 1500);
-            var (lo, hi) = EncodeRpmLE(rpm);
-            return new byte[7] { 0x49, 0x53, (byte)id, 0x06, lo, hi, 0 }; 
-        }
-
-        private static void BuildMessageRead(byte[] req, int id)
-        {
-            req[2] = (byte)id;
-            req[3] = 0x05; req[4] = 0x00; req[5] = 0x00;
-            req[6] = SumChecksum(req, 6);
-        }
-
-        private void SendMessage(byte[] req)
-        {
-            // checksum checking included
-            req[6] = SumChecksum(req, 6);
-            _port!.Write(req, 0, req.Length);
-            Log($"> {Hex(req)}");
-        }
-
-        private void TryReadAndLogOnce()
-        {
-            try
-            {
-                var buf = new byte[32];
-                int got = _port!.Read(buf, 0, buf.Length);
-                if (TryParseDt(buf, got, out byte rid, out byte cmd, out int rrpm))
-                {
-                    Log($"< DT ID={rid} CMD=0x{cmd:X2} RPM={rrpm} [{Hex(buf.AsSpan(0, got))}]");
-                    // 필요 시: UpdateRpmReadUI(rid, rrpm);
-                }
-                else if (got > 0)
-                {
-                    Log($"< {Hex(buf.AsSpan(0, got))}");
-                }
-            }
-            catch (TimeoutException) { /* ignore */ }
-        }
-
-        private bool TryParseDt(byte[] buf, int got, out byte id, out byte cmd, out int rpm)
-        {
-            //check header, checksum, and parse rpm ro little endian
-            //try or return false
-            id = 0; cmd = 0; rpm = 0;
-            if (got < 9) return false;
-            if (buf[0] != 0x44 || buf[1] != 0x54) return false; // 'D','T'
-            if (buf[8] != SumChecksum(buf, 8)) return false;
-            id = buf[2];
-            cmd = buf[3];
-            rpm = DecodeRpmLE(buf[6], buf[7]);
-            return true;
-        }
         #endregion
 
         #region Utils : Parsing, Checksum, Hex
@@ -311,6 +238,78 @@ namespace Ffu.Master
             var sb = new StringBuilder();
             for (int i = 0; i < span.Length; i++) sb.Append(span[i].ToString("X2")).Append(' ');
             return sb.ToString().TrimEnd();
+        }
+
+        private void AdjustAndSend(int id, int delta)
+        {
+            var rpm = Math.Clamp(GetCurrentRpm(id) + delta, 0, 1500);
+            if (FindName($"TxtRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
+            SendSetOnce(id, rpm);
+        }
+
+        private int GetId()
+        {
+            //NextIdorSkip 
+            lock (_ioSync)
+            {
+                if (_ids.Count == 0) return 0;
+                return _ids[_cursor++ % _ids.Count];
+            }
+        }
+
+        private static byte[] BuildMessage(int id, int rpm)
+        {
+            rpm = Math.Clamp(rpm, 0, 1500);
+            var (lo, hi) = EncodeRpmLE(rpm);
+            return new byte[7] { 0x49, 0x53, (byte)id, 0x06, lo, hi, 0 };
+        }
+
+        private static void BuildMessageRead(byte[] req, int id)
+        {
+            req[2] = (byte)id;
+            req[3] = 0x05; req[4] = 0x00; req[5] = 0x00;
+            req[6] = SumChecksum(req, 6);
+        }
+
+        private void SendMessage(byte[] req)
+        {
+            // checksum checking included
+            req[6] = SumChecksum(req, 6);
+            _port!.Write(req, 0, req.Length);
+            Log($"> {Hex(req)}");
+        }
+
+        private void TryReadAndLogOnce()
+        {
+            try
+            {
+                var buf = new byte[32];
+                int got = _port!.Read(buf, 0, buf.Length);
+                if (TryParseDt(buf, got, out byte rid, out byte cmd, out int rrpm))
+                {
+                    Log($"< DT ID={rid} CMD=0x{cmd:X2} RPM={rrpm} [{Hex(buf.AsSpan(0, got))}]");
+                    // 필요 시: UpdateRpmReadUI(rid, rrpm);
+                }
+                else if (got > 0)
+                {
+                    Log($"< {Hex(buf.AsSpan(0, got))}");
+                }
+            }
+            catch (TimeoutException) { /* ignore */ }
+        }
+
+        private bool TryParseDt(byte[] buf, int got, out byte id, out byte cmd, out int rpm)
+        {
+            //check header, checksum, and parse rpm ro little endian
+            //try or return false
+            id = 0; cmd = 0; rpm = 0;
+            if (got < 9) return false;
+            if (buf[0] != 0x44 || buf[1] != 0x54) return false; // 'D','T'
+            if (buf[8] != SumChecksum(buf, 8)) return false;
+            id = buf[2];
+            cmd = buf[3];
+            rpm = DecodeRpmLE(buf[6], buf[7]);
+            return true;
         }
         #endregion
 
