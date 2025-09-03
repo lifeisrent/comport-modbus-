@@ -6,6 +6,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Text.Json;
+using System.IO;
 
 namespace Ffu.Master
 {
@@ -333,7 +335,16 @@ namespace Ffu.Master
 
         private void Cleanup()
         {
-            try { _cts?.Cancel(); _sendTask?.Wait(200); } catch { }
+            try
+            {
+                // 포트가 열려 있으면 닫기 전에 RPM 캐시 저장
+                if (_port != null && _port.IsOpen)
+                {
+                    SaveRpmCache(_port.PortName);
+                }
+                _cts?.Cancel(); _sendTask?.Wait(200);
+            }
+            catch { }
             try { _port?.Close(); _port?.Dispose(); } catch { }
             _cts = null; _sendTask = null; _port = null;
             BtnOpen.IsEnabled = true; BtnClose.IsEnabled = false; BtnStart.IsEnabled = false; BtnStop.IsEnabled = false;
@@ -359,6 +370,18 @@ namespace Ffu.Master
                         tb.Text = rpm.ToString();
                 });
             }
+        }
+
+        private void SaveRpmCache(string port)
+        {
+            var rpmById = new Dictionary<int, int>();
+            for (int id = 1; id <= 6; id++)
+            {
+                if (FindName($"TxtRpm{id}") is TextBox tb && int.TryParse(tb.Text, out int rpm))
+                    rpmById[id] = rpm;
+            }
+            var obj = new { port, rpmById, ts = DateTime.Now };
+            File.WriteAllText($"rpm_{port}.json", JsonSerializer.Serialize(obj));
         }
     }
 }
