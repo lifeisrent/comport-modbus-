@@ -11,6 +11,8 @@ namespace Ffu.Master
 {
     public partial class MainWindow : Window
     {
+        private const int MAXRPM = 1500; // 최대 RPM 상수 정의
+
         private readonly object _ioSync = new object();
         private readonly Dictionary<int, int> _perTarget = new();
         private SerialPort? _port;
@@ -214,7 +216,7 @@ namespace Ffu.Master
         static (byte lo, byte hi) EncodeRpmLE(int rpm)
         {
             if (rpm < 0) rpm = 0;
-            if (rpm > 1500) rpm = 1500;
+            if (rpm > MAXRPM) rpm = MAXRPM;
             return ((byte)(rpm & 0xFF), (byte)((rpm >> 8) & 0xFF));
         }
         static int DecodeRpmLE(byte lo, byte hi) => (hi << 8) | lo;
@@ -249,7 +251,7 @@ namespace Ffu.Master
 
         private void AdjustAndSend(int id, int delta)
         {
-            var rpm = Math.Clamp(GetCurrentRpm(id) + delta, 0, 1500);
+            var rpm = Math.Clamp(GetCurrentRpm(id) + delta, 0, MAXRPM);
             if (FindName($"TxtRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
             SendSetOnce(id, rpm);
         }
@@ -266,7 +268,7 @@ namespace Ffu.Master
 
         private static byte[] BuildMessage(int id, int rpm)
         {
-            rpm = Math.Clamp(rpm, 0, 1500);
+            rpm = Math.Clamp(rpm, 0, MAXRPM);
             var (lo, hi) = EncodeRpmLE(rpm);
             return new byte[7] { 0x49, 0x53, (byte)id, 0x06, lo, hi, 0 };
         }
