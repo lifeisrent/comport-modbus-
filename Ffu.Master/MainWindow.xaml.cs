@@ -153,29 +153,36 @@ namespace Ffu.Master
 
         private async Task SendLoop(CancellationToken ct)
         {
-            // 공통 프레임 버퍼 (7바이트 고정)
-            var req = new byte[7] { 0x49, 0x53, 0, 0, 0, 0, 0 }; // 'I','S'
+            var req = new byte[7] { 0x49, 0x53, 0, 0, 0, 0, 0 };
+            int originalTimeout = _port!.ReadTimeout;
+            _port.ReadTimeout = 50; // ← 더 짧게 설정
 
-            while (!ct.IsCancellationRequested)
+            try
             {
-                try
+                while (!ct.IsCancellationRequested)
                 {
-                    // READ(0x05) only — 배포용 폴링
-                    int id = GetId();
-                    if (id == 0) continue; // ID 목록 비었음
+                    try
+                    {
+                        int id = GetId();
+                        if (id == 0) continue;
 
-                    BuildMessageRead(req, id);
-                    SendMessage(req);
-                    TryReadAndLogOnce();   // 단순 로그/표시 (필요 시 UI 업데이트로 확장)
+                        BuildMessageRead(req, id);
+                        SendMessage(req);
+                        TryReadAndLogOnce();  // 단순 로그/표시 (필요 시 UI 업데이트로 확장)
 
-                    await Task.Delay(120, ct).ConfigureAwait(false);
+                        await Task.Delay(120, ct).ConfigureAwait(false);
+                    }
+                    catch (OperationCanceledException) { }
+                    catch (Exception ex)
+                    {
+                        Log($"Send ERR: {ex.Message}");
+                        await Task.Delay(200, ct).ConfigureAwait(false);
+                    }
                 }
-                catch (OperationCanceledException) { /* 종료 */ }
-                catch (Exception ex)
-                {
-                    Log($"Send ERR: {ex.Message}");
-                    await Task.Delay(200, ct).ConfigureAwait(false);
-                }
+            }
+            finally
+            {
+                _port.ReadTimeout = originalTimeout; // 복구
             }
         }
         #endregion
