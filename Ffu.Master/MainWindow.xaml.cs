@@ -22,9 +22,11 @@ namespace Ffu.Master
         private Task? _sendTask;
         private List<int> _ids = new();   // 여러 ID 저장
         private int _cursor;
+        private CommLogger logger;
         public MainWindow()
         {
             InitializeComponent();
+            logger = new CommLogger("rs485_log.csv");
             Closed += (_, __) => Cleanup();
         }
 
@@ -282,11 +284,42 @@ namespace Ffu.Master
             req[6] = SumChecksum(req, 6);
         }
 
+        private int GetCommandDelayMs()
+        {
+            // Command 구간 시간 반환 (2ms < Ts < 30ms)
+            return 10; // 기본값 10ms
+        }
+
+        /// <summary>
+        /// RS485 Polling Delay 계산
+        /// </summary>
+        /// <param name="baudrate">통신 속도 (bps)</param>
+        /// <param name="slaveCount">슬레이브 개수</param>
+        /// <param name="frameBytes">Request/Response 프레임 크기 (바이트)</param>
+        /// <param name="processingDelayMs">Slave 처리 지연 (ms, 기본 30)</param>
+        /// <returns>총 Polling Delay(ms)</returns>
+        public static double CalculatePollingDelay(int baudrate, int slaveCount, int frameBytes, double processingDelayMs = 30)
+        {
+            // 1바이트 전송 시간 (ms)
+            double byteTimeMs = (1000.0 * 10) / baudrate;
+
+            // Request + Response 전송 시간
+            double frameTimeMs = frameBytes * byteTimeMs * 2;
+
+            // Slave 1대 총 소요 시간
+            double perSlaveTimeMs = frameTimeMs + processingDelayMs;
+
+            // 전체 Slave 순환 시간
+            return perSlaveTimeMs * slaveCount;
+        }
+
+
         private void SendMessage(byte[] req)
         {
-            // checksum checking included
+            logger.StartRequest();
             req[6] = SumChecksum(req, 6);
             _port!.Write(req, 0, req.Length);
+            Thread.Sleep(GetCommandDelayMs()); // Command 구간 시간 적용
             Log($"> {Hex(req)}");
         }
 
@@ -298,15 +331,19 @@ namespace Ffu.Master
                 int got = _port!.Read(buf, 0, buf.Length);
                 if (TryParseDt(buf, got, out byte rid, out byte cmd, out int rrpm))
                 {
+                    logger.LogResponse(rid, 7, got, error: false); // 로그 기록
                     Log($"< DT ID={rid} CMD=0x{cmd:X2} RPM={rrpm} [{Hex(buf.AsSpan(0, got))}]");
-                    UpdateRpmReadUI(rid, rrpm); // ← 추가
+                    UpdateRpmReadUI(rid, rrpm);
                 }
                 else if (got > 0)
                 {
                     Log($"< {Hex(buf.AsSpan(0, got))}");
                 }
             }
-            catch (TimeoutException) { /* ignore */ }
+            catch (TimeoutException)
+            {
+                logger.LogTimeout(0, 7); // 마지막 요청 ID를 알 수 있으면 전달, 없으면 0
+            }
         }
 
         private bool TryParseDt(byte[] buf, int got, out byte id, out byte cmd, out int rpm)

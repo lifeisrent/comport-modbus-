@@ -123,6 +123,8 @@ namespace Ffu.Slave
             BtnStart.IsEnabled = true; BtnStop.IsEnabled = false;
         }
 
+        private CommLogger logger = new CommLogger("rs485_slave_log.csv");
+
         private async Task ListenLoop(CancellationToken ct)
         {
             var rx = new List<byte>(64);
@@ -150,7 +152,7 @@ namespace Ffu.Slave
                         // === 0x06: Target RPM Set (LE) ===
                         if (cs == calc && cmd == 0x06 && _idSet.Contains(id))
                         {
-                            // DATA1=lo, DATA2=hi  (LE)
+                            logger.StartRequest(); // 요청 수신 시점 기록
                             byte lo = rx[4], hi = rx[5];
                             int rpm = DecodeRpmLE(lo, hi);
                             if (rpm < 0) rpm = 0; if (rpm > 1500) rpm = 1500;
@@ -159,22 +161,25 @@ namespace Ffu.Slave
                             UpdateWatchSlotsFor(id, rpm);
                             Log($"SET ID={id} RPM={rpm}");
 
-                            // (선택) ACK 응답: 44 54 ID 06 00 00 lo hi CS
                             var ack = new byte[9];
                             ack[0] = 0x44; ack[1] = 0x54; ack[2] = id;
                             ack[3] = 0x06; ack[4] = 0x00; ack[5] = 0x00;
                             ack[6] = lo; ack[7] = hi;
                             ack[8] = SumChecksum(ack, 8);
 
+                            int delayMs = Random.Shared.Next(2, 31);
+                            await Task.Delay(delayMs, ct);
                             _port!.Write(ack, 0, ack.Length);
+                            logger.LogResponse(id, 7, 9, error: false); // 응답 기록
                             Log($"ACK {Hex(ack)}");
 
                             rx.RemoveRange(0, 7);
-                            continue; // 다음 프레임
+                            continue;
                         }
 
                         if (cs == calc && cmd == 0x05 && _idSet.Contains(id))
                         {
+                            logger.StartRequest(); // 요청 수신 시점 기록
                             Log($"REQ {Hex(rx, 0, 7)}");
 
                             int rpm = _rpmById.TryGetValue(id, out var r) ? r : 0;
@@ -182,24 +187,27 @@ namespace Ffu.Slave
                             UpdateWatchSlotsFor(id, rpm);
                             var (lo, hi) = EncodeRpmLE(rpm);
 
-                            // 응답: 44 54 ID 05 00 00 lo hi CS (LE)
                             var resp = new byte[9];
                             resp[0] = 0x44; resp[1] = 0x54; resp[2] = id;
                             resp[3] = 0x05; resp[4] = 0x00; resp[5] = 0x00;
-                            resp[6] = lo;   // LE
-                            resp[7] = hi;   // LE
+                            resp[6] = lo;
+                            resp[7] = hi;
                             resp[8] = SumChecksum(resp, 8);
 
+                            int delayMs = Random.Shared.Next(2, 31);
+                            await Task.Delay(delayMs, ct);
                             _port.Write(resp, 0, resp.Length);
+                            logger.LogResponse(id, 7, 9, error: false); // 응답 기록
                             Log($"RES {Hex(resp)}");
                         }
 
-
-                        // 프레임 소비
                         rx.RemoveRange(0, 7);
                     }
                 }
-                catch (TimeoutException) { /* idle */ }
+                catch (TimeoutException)
+                {
+                    logger.LogTimeout(0, 0); // Timeout 기록 (ID/길이 알 수 없으면 0)
+                }
                 catch (Exception ex)
                 {
                     Log($"Loop ERR: {ex.Message}");
