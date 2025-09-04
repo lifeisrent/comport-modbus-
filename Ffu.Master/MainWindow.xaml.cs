@@ -147,16 +147,16 @@ namespace Ffu.Master
         private void SendSetOnce(int id, int rpm)
         {
             if (_port == null || !_port.IsOpen) { Log("Port not open"); return; }
-            var req = BuildMessage(id, rpm);
             try
             {
-                lock (_ioSync) // 루프와 충돌 방지
-                {
-                    SendMessage(req);
-                    TryReadAndLogOnce();
-                }
+                // 단발 송신 + 0x01(TargetRPM) 확인, 실패 시 소수회 재시도
+                var ok = SendSetWithConfirm(id, rpm, retries: 3, timeoutMs: 60, backoffMs: 10);
+                if (!ok) Log($"[WARN] Set ID={id} RPM={rpm} : 0x01 응답 미수신");
             }
-            catch (Exception ex) { Log($"SetOnce ERR: {ex.Message}"); }
+            catch (Exception ex)
+            {
+                Log($"SetOnce ERR: {ex.Message}");
+            }
         }
 
         private async Task SendLoop(CancellationToken ct)
@@ -193,6 +193,101 @@ namespace Ffu.Master
                 _port.ReadTimeout = originalTimeout; // 복구
             }
         }
+
+        // 1) 단발 송신 + 0x01 확인 재시도
+        private bool SendSetWithConfirm(int id, int rpm, int retries = 3, int timeoutMs = 60, int backoffMs = 10)
+        {
+            if (_port == null || !_port.IsOpen) { Log("Port not open"); return false; }
+
+            var req = BuildMessage(id, rpm); // 49 53 id 06 lo hi cs
+            int originalTimeout = _port.ReadTimeout;
+            _port.ReadTimeout = Math.Min(originalTimeout, Math.Max(10, timeoutMs));
+
+            try
+            {
+                for (int attempt = 1; attempt <= retries; attempt++)
+                {
+                    lock (_ioSync)
+                    {
+                        SendMessage(req); // 내부에서 CS 세팅 + 소량 sleep(GetCommandDelayMs)
+                        if (WaitForTargetAck(id, rpm, timeoutMs))
+                            return true;
+                    }
+                    Thread.Sleep(backoffMs);
+                }
+                Log($"[WARN] Set ID={id} RPM={rpm} : no 0x01 within {timeoutMs}ms x {retries}");
+                return false;
+            }
+            finally
+            {
+                _port.ReadTimeout = originalTimeout;
+            }
+        }
+
+        // 2) 0x01(7바이트) 응답 대기/검증
+        private bool WaitForTargetAck(int wantId, int wantRpm, int timeoutMs)
+        {
+            var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+            var buf = new byte[64];
+
+            while (DateTime.UtcNow < deadline)
+            {
+                try
+                {
+                    int got = _port!.Read(buf, 0, buf.Length);
+                    if (got >= 7 && buf[0] == 0x44 && buf[1] == 0x54) // 'D','T'
+                    {
+                        byte id = buf[2];
+                        byte cmd = buf[3];
+
+                        // 우선 0x01 7B 확인
+                        if (cmd == 0x01 && buf[6] == SumChecksum(buf, 6))
+                        {
+                            int rpm = DecodeRpmLE(buf[4], buf[5]); // LE
+                            if (id == wantId && rpm == wantRpm)
+                            {
+                                if (isCommLogging) logger.LogResponse(id, 7, 7, error: false);
+                                Log($"< DT ID={id} CMD=0x01 TargetRPM={rpm} [{Hex(buf.AsSpan(0, 7))}]");
+                                return true;
+                            }
+                        }
+
+                        // 그 외 프레임은 기존 파서로 소화(로그용)
+                        if (TryParseDt(buf, got, out byte rid, out byte rcmd, out int rrpm, out AlarmFlags alarms))
+                        {
+                            if (rcmd == 0x05)
+                            {
+                                bool hasAlarm =
+                                    (alarms & (AlarmFlags.OverCurrentOrHall |
+                                               AlarmFlags.RpmErrorHigher |
+                                               AlarmFlags.RpmErrorLower |
+                                               AlarmFlags.PtcError |
+                                               AlarmFlags.PowerDetectError |
+                                               AlarmFlags.IpmOverheat |
+                                               AlarmFlags.AbnormalAnyAlarm)) != 0;
+                                bool isRemote = !alarms.HasFlag(AlarmFlags.LocalMode);
+                                string desc = hasAlarm ? string.Join(", ", DescribeAlarms(alarms)) : "NONE";
+                                if (isCommLogging) logger.LogResponse(rid, 7, got, error: hasAlarm);
+                                Log($"< DT ID={rid} CMD=0x{rcmd:X2} RPM={rrpm} {(isRemote ? "[REMOTE]" : "[LOCAL]")} ALARM={desc} [{Hex(buf.AsSpan(0, got))}]");
+                            }
+                            else if (rcmd == 0x01)
+                            {
+                                if (isCommLogging) logger.LogResponse(rid, 7, got, error: false);
+                                Log($"< DT ID={rid} CMD=0x01 TargetRPM={rrpm} [{Hex(buf.AsSpan(0, got))}]");
+                                if (rid == wantId && rrpm == wantRpm) return true;
+                            }
+                        }
+                    }
+                }
+                catch (TimeoutException)
+                {
+                    // 계속 대기
+                }
+            }
+            return false;
+        }
+
+
         #endregion
 
         #region Utils : Parsing, Checksum, Hex
