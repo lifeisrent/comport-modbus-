@@ -227,7 +227,15 @@ namespace Ffu.Master
         }
         static int DecodeRpmLE(byte lo, byte hi) => (hi << 8) | lo;
 
-
+        private static IEnumerable<string> DescribeAlarms(AlarmFlags flags)
+        {
+            foreach (var kv in AlarmDictionary.Description)
+            {
+                // 모드 비트는 알람 설명에선 제외
+                if (kv.Key == AlarmFlags.LocalMode) continue;
+                if (flags.HasFlag(kv.Key)) yield return kv.Value;
+            }
+        }
         static byte SumChecksum(ReadOnlySpan<byte> frame)
         {
             int sum = 0;
@@ -331,11 +339,31 @@ namespace Ffu.Master
             {
                 var buf = new byte[32];
                 int got = _port!.Read(buf, 0, buf.Length);
-                if (TryParseDt(buf, got, out byte rid, out byte cmd, out int rrpm))
+                if (TryParseDt(buf, got, out byte rid, out byte cmd, out int rrpm, out AlarmFlags alarms))
                 {
-                    if (isCommLogging) logger.LogResponse(rid, 7, got, error: false); // 로그 기록
-                    Log($"< DT ID={rid} CMD=0x{cmd:X2} RPM={rrpm} [{Hex(buf.AsSpan(0, got))}]");
+                    // 알람 존재 여부(집계비트 포함) 판단
+                    bool hasAlarm =
+                        (alarms & (AlarmFlags.OverCurrentOrHall |
+                                   AlarmFlags.RpmErrorHigher |
+                                   AlarmFlags.RpmErrorLower |
+                                   AlarmFlags.PtcError |
+                                   AlarmFlags.PowerDetectError |
+                                   AlarmFlags.IpmOverheat |
+                                   AlarmFlags.AbnormalAnyAlarm)) != 0;
+
+                    // 모드(로컬/리모트) 표기
+                    bool isRemote = !alarms.HasFlag(AlarmFlags.LocalMode);
+
+                    // 설명 문자열
+                    string desc = hasAlarm ? string.Join(", ", DescribeAlarms(alarms)) : "NONE";
+
+                    // 로그/표시
+                    if (isCommLogging) logger.LogResponse(rid, 7, got, error: hasAlarm);
+                    Log($"< DT ID={rid} CMD=0x{cmd:X2} RPM={rrpm} {(isRemote ? "[REMOTE]" : "[LOCAL]")} ALARM={desc} [{Hex(buf.AsSpan(0, got))}]");
+
+                    // UI 반영
                     UpdateRpmReadUI(rid, rrpm);
+                    //SetStatusCircle(rid, hasAlarm ? FfuStatus.Error : FfuStatus.Good);
                 }
                 else if (got > 0)
                 {
@@ -348,17 +376,17 @@ namespace Ffu.Master
             }
         }
 
-        private bool TryParseDt(byte[] buf, int got, out byte id, out byte cmd, out int rpm)
+        private bool TryParseDt(byte[] buf, int got, out byte id, out byte cmd, out int rpm, out AlarmFlags alarms)
         {
-            //check header, checksum, and parse rpm ro little endian
-            //try or return false
-            id = 0; cmd = 0; rpm = 0;
+            id = 0; cmd = 0; rpm = 0; alarms = AlarmFlags.None;
             if (got < 9) return false;
             if (buf[0] != 0x44 || buf[1] != 0x54) return false; // 'D','T'
             if (buf[8] != SumChecksum(buf, 8)) return false;
             id = buf[2];
             cmd = buf[3];
-            rpm = DecodeRpmLE(buf[6], buf[7]);
+            rpm = DecodeRpmLE(buf[4], buf[5]); // ← buf[6], buf[7] -> buf[4], buf[5]
+            ushort alarmWord = (ushort)(buf[6] | (buf[7] << 8));
+            alarms = (AlarmFlags)alarmWord;
             return true;
         }
         #endregion
