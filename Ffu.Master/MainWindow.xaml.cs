@@ -427,47 +427,57 @@ namespace Ffu.Master
                 var buf = new byte[32];
                 int got = _port!.Read(buf, 0, buf.Length);
                 if (isCommLogging) logger.LogComm("RX", buf, got); // 수신 로그
-                if (TryParseDt(buf, got, out byte rid, out byte cmd, out int rrpm, out AlarmFlags alarms))
+
+                int offset = 0;
+                while (offset < got)
                 {
-                    if (cmd == 0x05)
+                    // 프레임 헤더 검사
+                    if (got - offset >= 7 && buf[offset] == 0x44 && buf[offset + 1] == 0x54)
                     {
-                        // 알람 여부 판단
-                        bool hasAlarm =
-                            (alarms & (AlarmFlags.OverCurrentOrHall |
-                                       AlarmFlags.RpmErrorHigher |
-                                       AlarmFlags.RpmErrorLower |
-                                       AlarmFlags.PtcError |
-                                       AlarmFlags.PowerDetectError |
-                                       AlarmFlags.IpmOverheat |
-                                       AlarmFlags.AbnormalAnyAlarm)) != 0;
-
-                        bool isRemote = !alarms.HasFlag(AlarmFlags.LocalMode);
-                        string desc = hasAlarm ? string.Join(", ", DescribeAlarms(alarms)) : "NONE";
-
-                        if (isCommLogging) logger.LogResponse(rid, 7, got, error: hasAlarm);
-                        Log($"< DT ID={rid} CMD=0x{cmd:X2} RPM={rrpm} {(isRemote ? "[REMOTE]" : "[LOCAL]")} ALARM={desc} [{Hex(buf.AsSpan(0, got))}]");
-
-                        UpdateRpmReadUI(rid, rrpm);
-                        //SetStatusCircle(rid, hasAlarm ? FfuStatus.Error : FfuStatus.Good);
+                        int frameLen = (buf[offset + 3] == 0x01) ? 7 : ((got - offset >= 9 && buf[offset + 3] == 0x05) ? 9 : 0);
+                        if (frameLen > 0 && got - offset >= frameLen)
+                        {
+                            // 프레임 단위 파싱
+                            if (TryParseDt(buf.Skip(offset).ToArray(), frameLen, out byte rid, out byte cmd, out int rrpm, out AlarmFlags alarms))
+                            {
+                                if (cmd == 0x05)
+                                {
+                                    bool hasAlarm =
+                                        (alarms & (AlarmFlags.OverCurrentOrHall |
+                                                   AlarmFlags.RpmErrorHigher |
+                                                   AlarmFlags.RpmErrorLower |
+                                                   AlarmFlags.PtcError |
+                                                   AlarmFlags.PowerDetectError |
+                                                   AlarmFlags.IpmOverheat |
+                                                   AlarmFlags.AbnormalAnyAlarm)) != 0;
+                                    bool isRemote = !alarms.HasFlag(AlarmFlags.LocalMode);
+                                    string desc = hasAlarm ? string.Join(", ", DescribeAlarms(alarms)) : "NONE";
+                                    if (isCommLogging) logger.LogResponse(rid, 7, frameLen, error: hasAlarm);
+                                    Log($"< DT ID={rid} CMD=0x{cmd:X2} RPM={rrpm} {(isRemote ? "[REMOTE]" : "[LOCAL]")} ALARM={desc} [{Hex(buf.AsSpan(offset, frameLen))}]");
+                                    UpdateRpmReadUI(rid, rrpm);
+                                }
+                                else if (cmd == 0x01)
+                                {
+                                    if (isCommLogging) logger.LogResponse(rid, 7, frameLen, error: false);
+                                    Log($"< DT ID={rid} CMD=0x{cmd:X2} TargetRPM={rrpm} [{Hex(buf.AsSpan(offset, frameLen))}]");
+                                }
+                            }
+                            offset += frameLen;
+                            continue;
+                        }
                     }
-                    else if (cmd == 0x01)
-                    {
-                        // TargetRPM 응답 처리 (7바이트)
-                        if (isCommLogging) logger.LogResponse(rid, 7, got, error: false);
-                        Log($"< DT ID={rid} CMD=0x{cmd:X2} TargetRPM={rrpm} [{Hex(buf.AsSpan(0, got))}]");
-
-                        // 필요 시 UI에 TargetRPM 반영 가능
-                        // (예: 별도 TextBox나 캐시에 저장)
-                    }
+                    offset++;
                 }
-                else if (got > 0)
+
+                // 남은 바이트가 프레임이 아니면 Hex로 출력
+                if (got > 0 && offset < got)
                 {
-                    Log($"< {Hex(buf.AsSpan(0, got))}");
+                    Log($"< {Hex(buf.AsSpan(offset, got - offset))}");
                 }
             }
             catch (TimeoutException)
             {
-                if (isCommLogging) logger.LogTimeout(0, 7); // 마지막 요청 ID를 알 수 있으면 전달, 없으면 0
+                if (isCommLogging) logger.LogTimeout(0, 7);
             }
         }
         private bool TryParseDt(byte[] buf, int got, out byte id, out byte cmd, out int rpm, out AlarmFlags alarms)
