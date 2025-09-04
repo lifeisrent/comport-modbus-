@@ -57,7 +57,7 @@ namespace Ffu.Master
             if (sender is FrameworkElement fe && TryGetId(fe.Tag, out int id))
                 AdjustAndSend(id, -100);
         }
-        private void BtnOpen_Click(object sender, RoutedEventArgs e)
+        private async void BtnOpen_Click(object sender, RoutedEventArgs e)
         {
             try
             {
@@ -69,7 +69,12 @@ namespace Ffu.Master
                     WriteTimeout = 200
                 };
                 _port.Open();
-
+                _port.DtrEnable = false;
+                _port.RtsEnable = false;
+                _port.Handshake = Handshake.None;
+                _port.DiscardInBuffer();
+                _port.DiscardOutBuffer();
+                await Task.Delay(200);
                 ScanSlaveID();
 
                 Log($"OPEN {_port.PortName} 9600");
@@ -235,6 +240,7 @@ namespace Ffu.Master
                 try
                 {
                     int got = _port!.Read(buf, 0, buf.Length);
+                    if (isCommLogging) logger.LogComm("RX", buf, got);
                     if (got >= 7 && buf[0] == 0x44 && buf[1] == 0x54) // 'D','T'
                     {
                         byte id = buf[2];
@@ -243,7 +249,7 @@ namespace Ffu.Master
                         // 우선 0x01 7B 확인
                         if (cmd == 0x01 && buf[6] == SumChecksum(buf, 6))
                         {
-                            int rpm = DecodeRpmLE(buf[4], buf[5]); // LE
+                            int rpm = DecodeRpmBE(buf[4], buf[5]); // BE
                             if (id == wantId && rpm == wantRpm)
                             {
                                 if (isCommLogging) logger.LogResponse(id, 7, 7, error: false);
@@ -313,20 +319,19 @@ namespace Ffu.Master
             }
             return new List<int>(set);
         }
-        // RPM 인코딩/디코딩 (리틀엔디언)
-        static (byte lo, byte hi) EncodeRpmLE(int rpm)
+        // RPM 인코딩/디코딩 (빅 엔디언)
+        static (byte hi, byte lo) EncodeRpmBE(int rpm)
         {
             if (rpm < 0) rpm = 0;
             if (rpm > MAXRPM) rpm = MAXRPM;
-            return ((byte)(rpm & 0xFF), (byte)((rpm >> 8) & 0xFF));
+            return ((byte)((rpm >> 8) & 0xFF), (byte)(rpm & 0xFF));
         }
-        static int DecodeRpmLE(byte lo, byte hi) => (hi << 8) | lo;
+        static int DecodeRpmBE(byte hi, byte lo) => (hi << 8) | lo;
 
         private static IEnumerable<string> DescribeAlarms(AlarmFlags flags)
         {
             foreach (var kv in AlarmDictionary.Description)
             {
-                // 모드 비트는 알람 설명에선 제외
                 if (kv.Key == AlarmFlags.LocalMode) continue;
                 if (flags.HasFlag(kv.Key)) yield return kv.Value;
             }
@@ -337,64 +342,50 @@ namespace Ffu.Master
             for (int i = 0; i < frame.Length; i++) sum += frame[i];
             return (byte)(sum & 0xFF);
         }
-
-        // ② 배열 + 길이  (req, 6) 같은 호출용
         static byte SumChecksum(byte[] frame, int len)
             => SumChecksum(frame.AsSpan(0, len));
-
-        // ③ List<byte> 범위용 
         static byte SumChecksum(List<byte> src, int offset, int length)
         {
             int sum = 0;
             for (int i = 0; i < length; i++) sum += src[offset + i];
             return (byte)(sum & 0xFF);
         }
-
-
         static string Hex(ReadOnlySpan<byte> span)
         {
             var sb = new StringBuilder();
             for (int i = 0; i < span.Length; i++) sb.Append(span[i].ToString("X2")).Append(' ');
             return sb.ToString().TrimEnd();
         }
-
         private void AdjustAndSend(int id, int delta)
         {
             var rpm = Math.Clamp(GetCurrentRpm(id) + delta, 0, MAXRPM);
             if (FindName($"TxtRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
             SendSetOnce(id, rpm);
         }
-
         private int GetId()
         {
-            //NextIdorSkip 
             lock (_ioSync)
             {
                 if (_ids.Count == 0) return 0;
                 return _ids[_cursor++ % _ids.Count];
             }
         }
-
         private static byte[] BuildMessage(int id, int rpm)
         {
             rpm = Math.Clamp(rpm, 0, MAXRPM);
-            var (lo, hi) = EncodeRpmLE(rpm);
-            return new byte[7] { 0x49, 0x53, (byte)id, 0x06, lo, hi, 0 };
+            var (hi, lo) = EncodeRpmBE(rpm);
+            return new byte[7] { 0x49, 0x53, (byte)id, 0x06, hi, lo, 0 };
         }
-
         private static void BuildMessageRead(byte[] req, int id)
         {
             req[2] = (byte)id;
             req[3] = 0x05; req[4] = 0x00; req[5] = 0x00;
             req[6] = SumChecksum(req, 6);
         }
-
         private int GetCommandDelayMs()
         {
-            // Command 구간 시간 반환 (2ms < Ts < 30ms)
-            return 10; // 기본값 10ms
+            return 10;
         }
-
         /// <summary>
         /// RS485 Polling Delay 계산
         /// </summary>
@@ -479,7 +470,6 @@ namespace Ffu.Master
                 if (isCommLogging) logger.LogTimeout(0, 7); // 마지막 요청 ID를 알 수 있으면 전달, 없으면 0
             }
         }
-
         private bool TryParseDt(byte[] buf, int got, out byte id, out byte cmd, out int rpm, out AlarmFlags alarms)
         {
             id = 0; cmd = 0; rpm = 0; alarms = AlarmFlags.None;
@@ -491,7 +481,7 @@ namespace Ffu.Master
             cmd = buf[3];
 
             // 공통: RPM = DATA1,DATA2 (LE)
-            rpm = DecodeRpmLE(buf[4], buf[5]);
+            rpm = DecodeRpmBE(buf[4], buf[5]);
 
             if (cmd == 0x01)
             {
