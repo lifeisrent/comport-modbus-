@@ -150,10 +150,10 @@ namespace Ffu.Slave
                         byte cs = rx[6];
                         byte calc = SumChecksum(rx, 0, 6);   // CS 제외(0~5) 합의 LSB
 
-                        // === 0x06: Target RPM Set (LE) ===
                         if (cs == calc && cmd == 0x06 && _idSet.Contains(id))
                         {
                             if (isCommLogging) logger.StartRequest();
+
                             byte lo = rx[4], hi = rx[5];
                             int rpm = DecodeRpmLE(lo, hi);
                             if (rpm < 0) rpm = 0; if (rpm > 1500) rpm = 1500;
@@ -162,17 +162,21 @@ namespace Ffu.Slave
                             UpdateWatchSlotsFor(id, rpm);
                             Log($"SET ID={id} RPM={rpm}");
 
-                            var ack = new byte[9];
-                            ack[0] = 0x44; ack[1] = 0x54; ack[2] = id;
-                            ack[3] = 0x06; ack[4] = 0x00; ack[5] = 0x00;
-                            ack[6] = lo; ack[7] = hi;
-                            ack[8] = SumChecksum(ack, 8);
+                            // (변경점) ACK(0x06) 보내지 않음
+
+                            // (신규) Target RPM 반환: 0x01, 7바이트
+                            var resp = new byte[7];
+                            resp[0] = 0x44; resp[1] = 0x54; resp[2] = id;
+                            resp[3] = 0x01;
+                            resp[4] = lo; resp[5] = hi;
+                            resp[6] = SumChecksum(resp, 6);
 
                             int delayMs = Random.Shared.Next(2, 31);
                             await Task.Delay(delayMs, ct);
-                            _port!.Write(ack, 0, ack.Length);
-                            if (isCommLogging) logger.LogResponse(id, 7, 9, error: false); // 응답 기록
-                            Log($"ACK {Hex(ack)}");
+                            _port!.Write(resp, 0, resp.Length);
+                            if (isCommLogging) logger.LogResponse(id, 7, resp.Length, error: false);
+
+                            Log($"RES(TargetRPM) {Hex(resp)}");
 
                             rx.RemoveRange(0, 7);
                             continue;
