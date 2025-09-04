@@ -194,9 +194,9 @@ namespace Ffu.Slave
 
                             var resp = new byte[9];
                             resp[0] = 0x44; resp[1] = 0x54; resp[2] = id;
-                            resp[3] = 0x05; resp[4] = 0x00; resp[5] = 0x00;
-                            resp[6] = lo;
-                            resp[7] = hi;
+                            resp[3] = 0x05; resp[4] = lo; resp[5] = hi;
+                            resp[6] = 0x00;
+                            resp[7] = 0x00;
                             resp[8] = SumChecksum(resp, 8);
 
                             int delayMs = Random.Shared.Next(2, 31);

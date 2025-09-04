@@ -50,5 +50,15 @@ namespace Ffu.Master
             string logLine = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff},{slaveId},{requestBytes},0,0,1,0";
             File.AppendAllText(logFile, logLine + Environment.NewLine);
         }
+
+        /// <summary>
+        /// 송신/수신 바이트 기록
+        /// </summary>
+        public void LogComm(string direction, byte[] data, int length)
+        {
+            string hex = BitConverter.ToString(data, 0, length).Replace("-", " ");
+            string line = $"{DateTime.Now:yyyy-MM-dd HH:mm:ss.fff},{direction},{hex}";
+            File.AppendAllText(logFile, line + Environment.NewLine);
+        }
     }
 }

@@ -424,6 +424,7 @@ namespace Ffu.Master
             if (isCommLogging) logger.StartRequest();
             req[6] = SumChecksum(req, 6);
             _port!.Write(req, 0, req.Length);
+            if (isCommLogging) logger.LogComm("TX", req, req.Length); // 송신 로그
             Thread.Sleep(GetCommandDelayMs()); // Command 구간 시간 적용
             Log($"> {Hex(req)}");
         }
@@ -434,6 +435,7 @@ namespace Ffu.Master
             {
                 var buf = new byte[32];
                 int got = _port!.Read(buf, 0, buf.Length);
+                if (isCommLogging) logger.LogComm("RX", buf, got); // 수신 로그
                 if (TryParseDt(buf, got, out byte rid, out byte cmd, out int rrpm, out AlarmFlags alarms))
                 {
                     if (cmd == 0x05)
