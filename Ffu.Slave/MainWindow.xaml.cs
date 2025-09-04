@@ -123,6 +123,7 @@ namespace Ffu.Slave
             BtnStart.IsEnabled = true; BtnStop.IsEnabled = false;
         }
 
+        private bool isCommLogging = true;
         private CommLogger logger = new CommLogger("rs485_slave_log.csv");
 
         private async Task ListenLoop(CancellationToken ct)
@@ -152,7 +153,7 @@ namespace Ffu.Slave
                         // === 0x06: Target RPM Set (LE) ===
                         if (cs == calc && cmd == 0x06 && _idSet.Contains(id))
                         {
-                            logger.StartRequest(); // 요청 수신 시점 기록
+                            if (isCommLogging) logger.StartRequest();
                             byte lo = rx[4], hi = rx[5];
                             int rpm = DecodeRpmLE(lo, hi);
                             if (rpm < 0) rpm = 0; if (rpm > 1500) rpm = 1500;
@@ -170,7 +171,7 @@ namespace Ffu.Slave
                             int delayMs = Random.Shared.Next(2, 31);
                             await Task.Delay(delayMs, ct);
                             _port!.Write(ack, 0, ack.Length);
-                            logger.LogResponse(id, 7, 9, error: false); // 응답 기록
+                            if (isCommLogging) logger.LogResponse(id, 7, 9, error: false); // 응답 기록
                             Log($"ACK {Hex(ack)}");
 
                             rx.RemoveRange(0, 7);
@@ -179,7 +180,7 @@ namespace Ffu.Slave
 
                         if (cs == calc && cmd == 0x05 && _idSet.Contains(id))
                         {
-                            logger.StartRequest(); // 요청 수신 시점 기록
+                            if (isCommLogging) logger.StartRequest();
                             Log($"REQ {Hex(rx, 0, 7)}");
 
                             int rpm = _rpmById.TryGetValue(id, out var r) ? r : 0;
@@ -197,7 +198,7 @@ namespace Ffu.Slave
                             int delayMs = Random.Shared.Next(2, 31);
                             await Task.Delay(delayMs, ct);
                             _port.Write(resp, 0, resp.Length);
-                            logger.LogResponse(id, 7, 9, error: false); // 응답 기록
+                            if (isCommLogging) logger.LogResponse(id, 7, 9, error: false); // 응답 기록
                             Log($"RES {Hex(resp)}");
                         }
 
@@ -206,7 +207,7 @@ namespace Ffu.Slave
                 }
                 catch (TimeoutException)
                 {
-                    logger.LogTimeout(0, 0); // Timeout 기록 (ID/길이 알 수 없으면 0)
+                    if (isCommLogging) logger.LogTimeout(0, 0); // Timeout 기록 (ID/길이 알 수 없으면 0)
                 }
                 catch (Exception ex)
                 {

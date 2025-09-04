@@ -23,6 +23,8 @@ namespace Ffu.Master
         private List<int> _ids = new();   // 여러 ID 저장
         private int _cursor;
         private CommLogger logger;
+        private bool isCommLogging = true; // 추가된 필드
+
         public MainWindow()
         {
             InitializeComponent();
@@ -316,7 +318,7 @@ namespace Ffu.Master
 
         private void SendMessage(byte[] req)
         {
-            logger.StartRequest();
+            if (isCommLogging) logger.StartRequest();
             req[6] = SumChecksum(req, 6);
             _port!.Write(req, 0, req.Length);
             Thread.Sleep(GetCommandDelayMs()); // Command 구간 시간 적용
@@ -331,7 +333,7 @@ namespace Ffu.Master
                 int got = _port!.Read(buf, 0, buf.Length);
                 if (TryParseDt(buf, got, out byte rid, out byte cmd, out int rrpm))
                 {
-                    logger.LogResponse(rid, 7, got, error: false); // 로그 기록
+                    if (isCommLogging) logger.LogResponse(rid, 7, got, error: false); // 로그 기록
                     Log($"< DT ID={rid} CMD=0x{cmd:X2} RPM={rrpm} [{Hex(buf.AsSpan(0, got))}]");
                     UpdateRpmReadUI(rid, rrpm);
                 }
@@ -342,7 +344,7 @@ namespace Ffu.Master
             }
             catch (TimeoutException)
             {
-                logger.LogTimeout(0, 7); // 마지막 요청 ID를 알 수 있으면 전달, 없으면 0
+                if (isCommLogging) logger.LogTimeout(0, 7); // 마지막 요청 ID를 알 수 있으면 전달, 없으면 0
             }
         }
 
