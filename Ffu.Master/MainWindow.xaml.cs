@@ -37,14 +37,18 @@ namespace Ffu.Master
         {
             if (sender is CheckBox cb && TryGetId(cb.Tag, out int id))
             {
-                SendSetOnce(id, 800);
+                int rpm = 800;
+                if (FindName($"TxtSetRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
+                SendSetOnce(id, rpm);
             }
         }
         private void OnChkUnchecked(object sender, RoutedEventArgs e)
         {
             if (sender is CheckBox cb && TryGetId(cb.Tag, out int id))
             {
-                SendSetOnce(id, 0);
+                int rpm = 0;
+                if (FindName($"TxtSetRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
+                SendSetOnce(id, rpm);
             }
         }
         private void OnUpClick(object sender, RoutedEventArgs e)
@@ -361,7 +365,7 @@ namespace Ffu.Master
         private void AdjustAndSend(int id, int delta)
         {
             var rpm = Math.Clamp(GetCurrentRpm(id) + delta, 0, MAXRPM);
-            if (FindName($"TxtRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
+            if (FindName($"TxtSetRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
             SendSetOnce(id, rpm);
         }
         private int GetId()
@@ -522,7 +526,7 @@ namespace Ffu.Master
         {
             if (_perTarget.TryGetValue(id, out var v)) return v;
             // TextBox를 이름으로 찾아서 파싱 (초기 0)
-            var tb = (TextBox?)FindName($"TxtRpm{id}");
+            var tb = (TextBox?)FindName($"TxtSetRpm{id}");
             if (tb != null && int.TryParse(tb.Text, out var t)) return t;
             return 0;
         }
@@ -571,7 +575,7 @@ namespace Ffu.Master
             var rpmById = new Dictionary<int, int>();
             for (int id = 1; id <= 6; id++)
             {
-                if (FindName($"TxtRpm{id}") is TextBox tb && int.TryParse(tb.Text, out int rpm))
+                if (FindName($"TxtSetRpm{id}") is TextBox tb && int.TryParse(tb.Text, out int rpm))
                     rpmById[id] = rpm;
             }
             var obj = new { port, rpmById, ts = DateTime.Now };
