@@ -30,6 +30,12 @@ namespace Ffu.Master
             InitializeComponent();
             logger = new CommLogger("rs485_log.csv");
             Closed += (_, __) => Cleanup();
+            // Disable all up/down buttons at startup
+            for (int i = 1; i <= 6; i++)
+            {
+                if (FindName($"BtnUp{i}") is Button btnUp) btnUp.IsEnabled = false;
+                if (FindName($"BtnDown{i}") is Button btnDown) btnDown.IsEnabled = false;
+            }
         }
 
         #region Control Events : Click, Checked, Log
@@ -40,6 +46,8 @@ namespace Ffu.Master
                 int rpm = 800;
                 if (FindName($"TxtSetRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
                 SendSetOnce(id, rpm);
+                // Enable up/down buttons for this ID
+                SetUpDownButtonsEnabled(id, true);
             }
         }
         private void OnChkUnchecked(object sender, RoutedEventArgs e)
@@ -49,6 +57,8 @@ namespace Ffu.Master
                 int rpm = 0;
                 if (FindName($"TxtSetRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
                 SendSetOnce(id, rpm);
+                // Disable up/down buttons for this ID
+                SetUpDownButtonsEnabled(id, false);
             }
         }
         private void OnUpClick(object sender, RoutedEventArgs e)
@@ -595,6 +605,15 @@ namespace Ffu.Master
                 case FfuStatus.Error: ellipse.Fill = System.Windows.Media.Brushes.Red; break;
                 case FfuStatus.None:  ellipse.Fill = System.Windows.Media.Brushes.Gray; break;
             }
+        }
+
+        // Helper to enable/disable up/down buttons for a given ID
+        private void SetUpDownButtonsEnabled(int id, bool enabled)
+        {
+            if (FindName($"BtnUp{id}") is Button btnUp)
+                btnUp.IsEnabled = enabled;
+            if (FindName($"BtnDown{id}") is Button btnDown)
+                btnDown.IsEnabled = enabled;
         }
     }
 }
