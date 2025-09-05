@@ -1,0 +1,164 @@
+﻿<Page x:Class="Ffu.Master.OverView"
+      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+      xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+      xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+      xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:local="clr-namespace:Ffu.Master"
+      mc:Ignorable="d" 
+      Height="700" Width="1250"
+      Background="White">
+
+    <Grid x:Name="mGrid">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <Grid Margin="12" Grid.Row="0" Grid.Column="0" Height="252" Width="535" HorizontalAlignment="Left" VerticalAlignment="Top">
+            <!-- Current RPM (Read) 표시 영역 -->
+            <GroupBox Header="Current RPM (Read)" Margin="8">
+                <UniformGrid Rows="1" Columns="6">
+                    <StackPanel Margin="4">
+                        <TextBlock Text="ID 1" HorizontalAlignment="Center"/>
+                        <TextBox x:Name="TxtCurRpm1" IsReadOnly="True" Width="70"
+               HorizontalContentAlignment="Right" Text="-" />
+                    </StackPanel>
+                    <StackPanel Margin="4">
+                        <TextBlock Text="ID 2" HorizontalAlignment="Center"/>
+                        <TextBox x:Name="TxtCurRpm2" IsReadOnly="True" Width="70"
+               HorizontalContentAlignment="Right" Text="-" />
+                    </StackPanel>
+                    <StackPanel Margin="4">
+                        <TextBlock Text="ID 3" HorizontalAlignment="Center"/>
+                        <TextBox x:Name="TxtCurRpm3" IsReadOnly="True" Width="70"
+               HorizontalContentAlignment="Right" Text="-" />
+                    </StackPanel>
+                    <StackPanel Margin="4">
+                        <TextBlock Text="ID 4" HorizontalAlignment="Center"/>
+                        <TextBox x:Name="TxtCurRpm4" IsReadOnly="True" Width="70"
+               HorizontalContentAlignment="Right" Text="-" />
+                    </StackPanel>
+                    <StackPanel Margin="4">
+                        <TextBlock Text="ID 5" HorizontalAlignment="Center"/>
+                        <TextBox x:Name="TxtCurRpm5" IsReadOnly="True" Width="70"
+               HorizontalContentAlignment="Right" Text="-" />
+                    </StackPanel>
+                    <StackPanel Margin="4">
+                        <TextBlock Text="ID 6" HorizontalAlignment="Center"/>
+                        <TextBox x:Name="TxtCurRpm6" IsReadOnly="True" Width="70"
+               HorizontalContentAlignment="Right" Text="-" />
+                    </StackPanel>
+                </UniformGrid>
+            </GroupBox>
+
+        </Grid>
+
+        <Grid Margin="12" Grid.Row="1" Grid.Column="0" Height="272" Width="535" HorizontalAlignment="Left" VerticalAlignment="Bottom">
+
+            <TextBox x:Name="TxtLog" IsReadOnly="True" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap"/>
+        </Grid>
+
+        <Grid Grid.Row="0" Grid.Column="1" >
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+            <UniformGrid Grid.Row="0" Rows="1" Columns="6" Margin="8">
+                <!-- ID 1 -->
+                <StackPanel Margin="4">
+                    <TextBlock Text="ID 1" HorizontalAlignment="Center"/>
+                    <TextBox x:Name="TxtSetRpm1" Text="0" IsReadOnly="True" Width="50"
+             HorizontalContentAlignment="Right" Margin="0,4,0,4"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button x:Name="BtnUp1" Content="▲" Tag="1" Click="OnUpClick"   Width="32" Margin="2,0"/>
+                        <Button x:Name="BtnDown1" Content="▼" Tag="1" Click="OnDownClick" Width="32" Margin="2,0"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- ID 2 -->
+                <StackPanel Margin="4">
+                    <TextBlock Text="ID 2" HorizontalAlignment="Center"/>
+                    <TextBox x:Name="TxtSetRpm2" Text="0" IsReadOnly="True" Width="50"
+             HorizontalContentAlignment="Right" Margin="0,4,0,4"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button x:Name="BtnUp2" Content="▲" Tag="2" Click="OnUpClick"   Width="32" Margin="2,0"/>
+                        <Button x:Name="BtnDown2" Content="▼" Tag="2" Click="OnDownClick" Width="32" Margin="2,0"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- ID 3 -->
+                <StackPanel Margin="4">
+                    <TextBlock Text="ID 3" HorizontalAlignment="Center"/>
+                    <TextBox x:Name="TxtSetRpm3" Text="0" IsReadOnly="True" Width="50"
+             HorizontalContentAlignment="Right" Margin="0,4,0,4"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button x:Name="BtnUp3" Content="▲" Tag="3" Click="OnUpClick"   Width="32" Margin="2,0"/>
+                        <Button x:Name="BtnDown3" Content="▼" Tag="3" Click="OnDownClick" Width="32" Margin="2,0"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- ID 4 -->
+                <StackPanel Margin="4">
+                    <TextBlock Text="ID 4" HorizontalAlignment="Center"/>
+                    <TextBox x:Name="TxtSetRpm4" Text="0" IsReadOnly="True" Width="50"
+             HorizontalContentAlignment="Right" Margin="0,4,0,4"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button x:Name="BtnUp4" Content="▲" Tag="4" Click="OnUpClick"   Width="32" Margin="2,0"/>
+                        <Button x:Name="BtnDown4" Content="▼" Tag="4" Click="OnDownClick" Width="32" Margin="2,0"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- ID 5 -->
+                <StackPanel Margin="4">
+                    <TextBlock Text="ID 5" HorizontalAlignment="Center"/>
+                    <TextBox x:Name="TxtSetRpm5" Text="0" IsReadOnly="True" Width="50"
+             HorizontalContentAlignment="Right" Margin="0,4,0,4"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button x:Name="BtnUp5" Content="▲" Tag="5" Click="OnUpClick"   Width="32" Margin="2,0"/>
+                        <Button x:Name="BtnDown5" Content="▼" Tag="5" Click="OnDownClick" Width="32" Margin="2,0"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <!-- ID 6 -->
+                <StackPanel Margin="4">
+                    <TextBlock Text="ID 6" HorizontalAlignment="Center"/>
+                    <TextBox x:Name="TxtSetRpm6" Text="0" IsReadOnly="True" Width="50"
+             HorizontalContentAlignment="Right" Margin="0,4,0,4"/>
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button x:Name="BtnUp6" Content="▲" Tag="6" Click="OnUpClick"   Width="32" Margin="2,0"/>
+                        <Button x:Name="BtnDown6" Content="▼" Tag="6" Click="OnDownClick" Width="32" Margin="2,0"/>
+                    </StackPanel>
+                </StackPanel>
+            </UniformGrid>
+            <UniformGrid Grid.Row="1" Columns="6" Margin="8">
+                <CheckBox x:Name="chk_fffu_onoff1" Content="ID 1 (800/0)" Tag="1"
+                        Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
+                <CheckBox x:Name="chk_fffu_onoff2" Content="ID 2 (800/0)" Tag="2"
+                        Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
+                <CheckBox x:Name="chk_fffu_onoff3" Content="ID 3 (800/0)" Tag="3"
+                        Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
+                <CheckBox x:Name="chk_fffu_onoff4" Content="ID 4 (800/0)" Tag="4"
+                        Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
+                <CheckBox x:Name="chk_fffu_onoff5" Content="ID 5 (800/0)" Tag="5"
+                        Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
+                <CheckBox x:Name="chk_fffu_onoff6" Content="ID 6 (800/0)" Tag="6"
+                        Checked="OnChkChecked" Unchecked="OnChkUnchecked" />
+            </UniformGrid>
+            <UniformGrid Grid.Row="2" Columns="6" Margin="8">
+                <Ellipse x:Name="StatusCircle1" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
+                <Ellipse x:Name="StatusCircle2" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
+                <Ellipse x:Name="StatusCircle3" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
+                <Ellipse x:Name="StatusCircle4" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
+                <Ellipse x:Name="StatusCircle5" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
+                <Ellipse x:Name="StatusCircle6" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
+            </UniformGrid>
+        </Grid>
+    </Grid>
+
+</Page>
