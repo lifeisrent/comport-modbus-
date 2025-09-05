@@ -75,7 +75,9 @@ namespace Ffu.Master
                 _port.DiscardInBuffer();
                 _port.DiscardOutBuffer();
                 await Task.Delay(200);
-                ScanSlaveID();
+
+                // ScanSlaveID(); // ← no-op 처리
+                _ids = ParseIdSet(TxtIds.Text);
 
                 Log($"OPEN {_port.PortName} 9600");
                 BtnOpen.IsEnabled = false; BtnClose.IsEnabled = true; BtnStart.IsEnabled = true;
