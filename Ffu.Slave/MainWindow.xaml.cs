@@ -109,13 +109,14 @@ namespace Ffu.Slave
             }
             return new List<int>(set);
         }
-        static (byte lo, byte hi) EncodeRpmLE(int rpm)
+        // BE 인코딩/디코딩으로 변경
+        static (byte hi, byte lo) EncodeRpmBE(int rpm)
         {
             if (rpm < 0) rpm = 0;
             if (rpm > 1500) rpm = 1500;
-            return ((byte)(rpm & 0xFF), (byte)((rpm >> 8) & 0xFF));
+            return ((byte)((rpm >> 8) & 0xFF), (byte)(rpm & 0xFF));
         }
-        static int DecodeRpmLE(byte lo, byte hi) => (hi << 8) | lo;
+        static int DecodeRpmBE(byte hi, byte lo) => (hi << 8) | lo;
 
         private void BtnStop_Click(object sender, RoutedEventArgs e)
         {
@@ -154,8 +155,8 @@ namespace Ffu.Slave
                         {
                             if (isCommLogging) logger.StartRequest();
 
-                            byte lo = rx[4], hi = rx[5];
-                            int rpm = DecodeRpmLE(lo, hi);
+                            byte hi = rx[4], lo = rx[5];
+                            int rpm = DecodeRpmBE(hi, lo);
                             if (rpm < 0) rpm = 0; if (rpm > 1500) rpm = 1500;
 
                             _rpmById[id] = rpm;
@@ -168,7 +169,7 @@ namespace Ffu.Slave
                             var resp = new byte[7];
                             resp[0] = 0x44; resp[1] = 0x54; resp[2] = id;
                             resp[3] = 0x01;
-                            resp[4] = lo; resp[5] = hi;
+                            resp[4] = hi; resp[5] = lo;
                             resp[6] = SumChecksum(resp, 6);
 
                             int delayMs = Random.Shared.Next(2, 31);
@@ -190,11 +191,11 @@ namespace Ffu.Slave
                             int rpm = _rpmById.TryGetValue(id, out var r) ? r : 0;
                             _rpmById[id] = rpm;
                             UpdateWatchSlotsFor(id, rpm);
-                            var (lo, hi) = EncodeRpmLE(rpm);
+                            var (hi, lo) = EncodeRpmBE(rpm);
 
                             var resp = new byte[9];
                             resp[0] = 0x44; resp[1] = 0x54; resp[2] = id;
-                            resp[3] = 0x05; resp[4] = lo; resp[5] = hi;
+                            resp[3] = 0x05; resp[4] = hi; resp[5] = lo;
                             resp[6] = 0x00;
                             resp[7] = 0x00;
                             resp[8] = SumChecksum(resp, 8);
