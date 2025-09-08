@@ -13,32 +13,14 @@ namespace Ffu.Master
 {
     public partial class MainWindow : Window
     {
-        private readonly OverView _overView;
-        private readonly SettingView _settingView;
+        private TabMainView _tabMainView;
+
         public MainWindow()
         {
             InitializeComponent();
-            
-            _overView = new OverView();
-            _settingView = new SettingView(_overView);
-
-            MainFrame.Navigate(_overView);
-
-            Closed += (_, __) => Cleanup();
-        }
-        private void BtnSetting_Click(object sender, RoutedEventArgs e)
-            => MainFrame.Navigate(_settingView);
-
-        private void BtnExit_Click(object sender, RoutedEventArgs e)
-            => MainFrame.Navigate(_overView);
-        private void Cleanup()
-        {
-            try
-            {
-                dynamic page = MainFrame.Content;
-                page.Cleanup();
-            }
-            catch { }
+            _tabMainView = new TabMainView();
+            MainFrame.Navigate(_tabMainView);
+            this.Closed += (_, __) => _tabMainView.Cleanup();
         }
     }
 }

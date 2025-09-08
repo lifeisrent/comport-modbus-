@@ -1,16 +1,11 @@
 ﻿<Window x:Class="Ffu.Master.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="FFU Master" Height="700" Width="1250" ResizeMode="NoResize">
+        Title="FFU Master" Height="700" Width="1265" ResizeMode="NoResize">
+
+ 
     <Grid>
         <DockPanel>
-            <!-- 상단바 -->
-            <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Background="LightGray">
-                <Button x:Name="BtnSetting" Content="Setting" Margin="5" Click="BtnSetting_Click"/>
-                <Button x:Name="BtnExit" Content="Exit" Margin="5" Click="BtnExit_Click"/>
-            </StackPanel>
-
-            <!-- 본문 Frame -->
             <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden"/>
         </DockPanel>
     </Grid>

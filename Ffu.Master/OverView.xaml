@@ -368,42 +368,8 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <Border Grid.ColumnSpan="3" Grid.Row="0" Background="{StaticResource gray600}" BorderThickness="1" BorderBrush="#72787f">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
 
-                <StackPanel Orientation="Horizontal" Grid.Column="0" VerticalAlignment="Center" Margin="10,0">
-                    <TextBlock Text="FFU Ctrl system" Foreground="White" FontSize="16" FontWeight="Bold"/>
-                </StackPanel>
-
-                <Button Grid.Column="1" Content="Setting" Foreground="White" Margin="5" Padding="10,5" BorderThickness="0">
-
-                    <Button.Background>
-
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                            <GradientStop Color="#27AE60" Offset="0"/>
-                            <GradientStop Color="#1D8348" Offset="1"/>
-                        </LinearGradientBrush>
-
-                    </Button.Background>
-
-                </Button>
-                <Button Grid.Column="2" Content="EXIT" Foreground="White" Margin="5" Padding="10,5" BorderThickness="0">
-                    <Button.Background>
-                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                            <GradientStop Color="#E74C3C" Offset="0"/>
-                            <GradientStop Color="#A93226" Offset="1"/>
-                        </LinearGradientBrush>
-                    </Button.Background>
-                </Button>
-            </Grid>
-        </Border>
-
-        <Grid Margin="12" Grid.Row="0" Grid.Column="0" Height="252" Width="535" HorizontalAlignment="Left" VerticalAlignment="Top" >
+        <Grid Margin="12" Grid.Row="1" Grid.Column="0" Height="252" Width="535" HorizontalAlignment="Left" VerticalAlignment="Top" >
             <!-- Current RPM (Read) 표시 영역 -->
             <GroupBox Header="Current RPM (Read)" Margin="8">
                 <UniformGrid Rows="1" Columns="6">
