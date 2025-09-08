@@ -3,25 +3,436 @@
       xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
       xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+      xmlns:dxe="http://schemas.devexpress.com/winfx/2008/xaml/editors"
       xmlns:local="clr-namespace:Ffu.Master"
       mc:Ignorable="d" 
              Height="700" Width="1250"
              Background="White">
-    <Grid>
-        <StackPanel>
+    <Page.Resources>
+        <SolidColorBrush x:Key="gray50" Color="#F7F8F9"/>
+        <SolidColorBrush x:Key="gray100" Color="#E8EBED"/>
+        <SolidColorBrush x:Key="gray200" Color="#C9CDD2"/>
+        <SolidColorBrush x:Key="gray400" Color="#9EA4AA"/>
+        <SolidColorBrush x:Key="gray500" Color="#72787F"/>
+        <SolidColorBrush x:Key="gray600" Color="#454C53"/>
+        <SolidColorBrush x:Key="gray800" Color="#26282B"/>
+        <SolidColorBrush x:Key="gray900" Color="#1B1D1F"/>
 
+        <Style x:Key="slider" TargetType="dxe:CheckEdit">
+            <Setter Property="FontFamily" Value="Segoe UI"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="dxe:CheckEdit">
+                        <Grid>
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup x:Name="CommonStates">
+                                    <VisualStateGroup.Transitions>
+                                        <VisualTransition GeneratedDuration="0:0:0.1" To="MouseOver" />
+                                        <VisualTransition From="MouseOver" GeneratedDuration="0:0:0.15" To="Normal" />
+                                    </VisualStateGroup.Transitions>
+                                    <VisualState x:Name="Normal" />
+                                    <VisualState x:Name="MouseOver">
+                                        <Storyboard>
+                                            <DoubleAnimationUsingKeyFrames
+                                                Storyboard.TargetProperty="(UIElement.Opacity)"
+                                                Storyboard.TargetName="on">
+                                                <EasingDoubleKeyFrame KeyTime="0" Value="1" />
+                                            </DoubleAnimationUsingKeyFrames>
+                                            <ObjectAnimationUsingKeyFrames
+                                                Storyboard.TargetProperty="(UIElement.Visibility)"
+                                                Storyboard.TargetName="off">
+                                                <DiscreteObjectKeyFrame KeyTime="0" Value="Hidden" />
+                                            </ObjectAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState x:Name="Pressed">
+                                        <Storyboard>
+                                            <DoubleAnimationUsingKeyFrames
+                                                Storyboard.TargetProperty="(UIElement.Opacity)"
+                                                Storyboard.TargetName="pressed">
+                                                <EasingDoubleKeyFrame KeyTime="0" Value="1" />
+                                            </DoubleAnimationUsingKeyFrames>
+                                            <DoubleAnimationUsingKeyFrames
+                                                Storyboard.TargetProperty="(UIElement.Opacity)"
+                                                Storyboard.TargetName="off">
+                                                <EasingDoubleKeyFrame KeyTime="0" Value="0" />
+                                            </DoubleAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState x:Name="Disabled" />
+                                </VisualStateGroup>
+                                <VisualStateGroup x:Name="CheckStates">
+                                    <VisualStateGroup.Transitions>
+                                        <VisualTransition GeneratedDuration="0:0:0.15" To="Checked">
+                                            <VisualTransition.GeneratedEasingFunction>
+                                                <CircleEase EasingMode="EaseIn" />
+                                            </VisualTransition.GeneratedEasingFunction>
+                                            <Storyboard>
+                                                <DoubleAnimation Duration="0:0:0.15" From="1" To="1"
+                                                                 Storyboard.TargetProperty="(UIElement.Opacity)"
+                                                                 Storyboard.TargetName="on">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <CircleEase EasingMode="EaseInOut" />
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                                <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="X"
+                                                                               Storyboard.TargetName="translate">
+                                                    <EasingDoubleKeyFrame KeyTime="0" Value="0" />
+                                                    <EasingDoubleKeyFrame KeyTime="0:0:0.15" Value="43" />
+                                                    <!-- 이동거리 줄임 -->
+                                                </DoubleAnimationUsingKeyFrames>
+                                            </Storyboard>
+                                        </VisualTransition>
+                                        <VisualTransition GeneratedDuration="0:0:0.15" To="Unchecked">
+                                            <Storyboard>
+                                                <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="X"
+                                                                               Storyboard.TargetName="translate">
+                                                    <EasingDoubleKeyFrame KeyTime="0" Value="43" />
+                                                    <!-- 이동거리 줄임 -->
+                                                    <EasingDoubleKeyFrame KeyTime="0:0:0.15" Value="0" />
+                                                </DoubleAnimationUsingKeyFrames>
+                                            </Storyboard>
+                                        </VisualTransition>
+                                    </VisualStateGroup.Transitions>
+                                    <VisualState x:Name="Checked">
+                                        <Storyboard>
+                                            <DoubleAnimationUsingKeyFrames Storyboard.TargetProperty="X"
+                                                                           Storyboard.TargetName="translate">
+                                                <EasingDoubleKeyFrame KeyTime="0" Value="43" />
+                                                <!-- 이동거리 줄임 -->
+                                            </DoubleAnimationUsingKeyFrames>
+                                            <DoubleAnimationUsingKeyFrames
+                                                Storyboard.TargetProperty="(UIElement.Opacity)"
+                                                Storyboard.TargetName="on">
+                                                <EasingDoubleKeyFrame KeyTime="0" Value="1" />
+                                            </DoubleAnimationUsingKeyFrames>
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState x:Name="Unchecked" />
+                                    <VisualState x:Name="Indeterminate" />
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+                            <Border x:Name="back" Background="{StaticResource gray100}" CornerRadius="8">
+                                <Border CornerRadius="4" Margin="6">
+                                    <Border.Background>
+                                        <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                            <GradientStop Color="#FF919293" Offset="0" />
+                                            <GradientStop Color="#FFBEBFBF" Offset="1" />
+                                            <GradientStop Color="#FF9FA1A2" Offset="0.25" />
+                                        </LinearGradientBrush>
+                                    </Border.Background>
+                                    <Border CornerRadius="3" Margin="1">
+                                        <Border.Background>
+                                            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                                <GradientStop Color="#FFCECECE" Offset="0" />
+                                                <GradientStop Color="White" Offset="1" />
+                                                <GradientStop Color="#FFECECED" Offset="0.1" />
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                    </Border>
+                                </Border>
+                            </Border>
+                            <Grid x:Name="off_Copy"
+                                  HorizontalAlignment="Right" 
+                                  Height="13"
+                                  Margin="27,1,19,0"           
+                                  VerticalAlignment="Center"
+                                  Width="14"
+                                  FlowDirection="LeftToRight">
+                                <Path Stretch="Fill"
+                                      Fill="White"
+                                      Data="F1 M 676.602,232.803C 676.576,233.415 676.257,233.734 675.645,233.76L 671.717,233.76C 671.105,233.734 670.786,233.415 670.76,232.803L 670.76,222.717C 670.786,222.105 671.105,221.786 671.717,221.76L 675.645,221.76C 676.257,221.786 676.576,222.105 676.602,222.717L 676.602,232.803 Z M 674.865,232.023L 674.865,223.497L 672.497,223.497L 672.497,232.023L 674.865,232.023 Z M 683.076,223.497L 679.918,223.497L 679.918,226.813L 682.602,226.813L 682.602,228.55L 679.918,228.55L 679.918,233.76L 678.181,233.76L 678.181,221.76L 683.076,221.76L 683.076,223.497 Z M 688.76,223.497L 685.602,223.497L 685.602,226.813L 688.286,226.813L 688.286,228.55L 685.602,228.55L 685.602,233.76L 683.865,233.76L 683.865,221.76L 688.76,221.76L 688.76,223.497 Z "
+                                      Margin="-8,3,0,0"
+                                      UseLayoutRounding="False" />
+                                <Path Stretch="Fill"
+                                      Fill="#FF9A9C9D"
+                                      Data="F1 M 676.602,232.803C 676.576,233.415 676.257,233.734 675.645,233.76L 671.717,233.76C 671.105,233.734 670.786,233.415 670.76,232.803L 670.76,222.717C 670.786,222.105 671.105,221.786 671.717,221.76L 675.645,221.76C 676.257,221.786 676.576,222.105 676.602,222.717L 676.602,232.803 Z M 674.865,232.023L 674.865,223.497L 672.497,223.497L 672.497,232.023L 674.865,232.023 Z M 683.076,223.497L 679.918,223.497L 679.918,226.813L 682.602,226.813L 682.602,228.55L 679.918,228.55L 679.918,233.76L 678.181,233.76L 678.181,221.76L 683.076,221.76L 683.076,223.497 Z M 688.76,223.497L 685.602,223.497L 685.602,226.813L 688.286,226.813L 688.286,228.55L 685.602,228.55L 685.602,233.76L 683.865,233.76L 683.865,221.76L 688.76,221.76L 688.76,223.497 Z "
+                                      Margin="-8,1,0,1"
+                                      UseLayoutRounding="False" />
+                            </Grid>
+                            <Grid x:Name="on_Copy"
+                                  HorizontalAlignment="Left"  
+                                  Height="13"
+                                  Margin="27,1,22,0"
+                                  VerticalAlignment="Center"
+                                  Width="14"
+                                  FlowDirection="LeftToRight">
+                                <Path Stretch="Fill"
+                                      Fill="White"
+                                      Data="F1 M 614.727,178.803C 614.699,179.415 614.362,179.734 613.716,179.76L 609.57,179.76C 608.925,179.734 608.588,179.415 608.56,178.803L 608.56,168.717C 608.588,168.105 608.925,167.786 609.57,167.76L 613.716,167.76C 614.362,167.786 614.699,168.105 614.727,168.717L 614.727,178.803 Z M 612.893,178.023L 612.893,169.497L 610.393,169.497L 610.393,178.023L 612.893,178.023 Z M 622.56,179.76L 620.914,179.76L 618.104,172.208C 618.186,172.577 618.227,172.865 618.227,173.074L 618.227,179.76L 616.393,179.76L 616.393,167.76L 618.039,167.76L 620.849,175.159C 620.767,174.79 620.727,174.502 620.727,174.293L 620.727,167.76L 622.56,167.76L 622.56,179.76 Z "
+                                      HorizontalAlignment="Stretch"
+                                      Margin="0,1,0,0"
+                                      UseLayoutRounding="False"
+                                      VerticalAlignment="Stretch" />
+                                <Path Stretch="Fill"
+                                      Fill="#FF9A9C9D"
+                                      Data="F1 M 614.727,178.803C 614.699,179.415 614.362,179.734 613.716,179.76L 609.57,179.76C 608.925,179.734 608.588,179.415 608.56,178.803L 608.56,168.717C 608.588,168.105 608.925,167.786 609.57,167.76L 613.716,167.76C 614.362,167.786 614.699,168.105 614.727,168.717L 614.727,178.803 Z M 612.893,178.023L 612.893,169.497L 610.393,169.497L 610.393,178.023L 612.893,178.023 Z M 622.56,179.76L 620.914,179.76L 618.104,172.208C 618.186,172.577 618.227,172.865 618.227,173.074L 618.227,179.76L 616.393,179.76L 616.393,167.76L 618.039,167.76L 620.849,175.159C 620.767,174.79 620.727,174.502 620.727,174.293L 620.727,167.76L 622.56,167.76L 622.56,179.76 Z "
+                                      HorizontalAlignment="Stretch"
+                                      Margin="0,0,0,1"
+                                      UseLayoutRounding="False"
+                                      VerticalAlignment="Stretch" />
+                            </Grid>
+                            <Grid Margin="8">
+                                <Grid x:Name="thumb" Width="40" HorizontalAlignment="Left">
+                                    <Border x:Name="off" CornerRadius="3">
+                                        <Border.Background>
+                                            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                                <GradientStop Color="#FFB2B2B2" Offset="0" />
+                                                <GradientStop Color="#FFA1A1A1" Offset="1" />
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <Border CornerRadius="2" Margin="1" BorderThickness="0,1,0,0"
+                                                BorderBrush="#FFE5E5E5">
+                                            <Border.Background>
+                                                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                                    <GradientStop Color="#A93226" Offset="0" />
+                                                    <GradientStop Color="#F1948A" Offset="1" />
+                                                </LinearGradientBrush>
+                                            </Border.Background>
+                                        </Border>
+                                    </Border>
+                                    <Border x:Name="on" CornerRadius="3" Opacity="0">
+                                        <Border.Background>
+                                            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                                <GradientStop Color="#FF7E9BCD" Offset="0" />
+                                                <GradientStop Color="#FF6383BD" Offset="1" />
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <Border CornerRadius="2" Margin="1" BorderThickness="0,1,0,0"
+                                                BorderBrush="#FFBFD8F3">
+                                            <Border.Background>
+                                                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                                    <GradientStop Color="#1D8348" Offset="0" />
+                                                    <GradientStop Color="#58D68D" Offset="1" />
+                                                </LinearGradientBrush>
+                                            </Border.Background>
+                                        </Border>
+                                    </Border>
+                                    <Border x:Name="pressed" CornerRadius="3" Opacity="0">
+                                        <Border.Background>
+                                            <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                                <GradientStop Color="#FFB2B2B2" Offset="1" />
+                                                <GradientStop Color="#FF8B8B8B" />
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <Border CornerRadius="2" Margin="1" BorderThickness="0" BorderBrush="#FFE5E5E5">
+                                            <Border.Background>
+                                                <LinearGradientBrush EndPoint="0.5,1" StartPoint="0.5,0">
+                                                    <GradientStop Color="Silver" Offset="1" />
+                                                    <GradientStop Color="#FFA7A7A7" />
+                                                </LinearGradientBrush>
+                                            </Border.Background>
+                                        </Border>
+                                    </Border>
+                                    <Grid.RenderTransform>
+                                        <TranslateTransform x:Name="translate" />
+                                    </Grid.RenderTransform>
+                                </Grid>
+                            </Grid>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="HeaderTextStyle-title" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI, Microsoft YaHei UI, Malgun Gothic"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{StaticResource gray50}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="HeaderTextStyle-content" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI, Microsoft YaHei UI, Malgun Gothic"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{StaticResource gray600}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="8,10,0,8"/>
+        </Style>
+        <!-- FFUHeaderStyle - Windows Grey 테마 적용 -->
+        <Style x:Key="FFUHeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI, Microsoft YaHei UI, Malgun Gothic"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{StaticResource gray800}"/>
+            <Setter Property="Background" Value="{StaticResource gray100}"/>
+            <Setter Property="Padding" Value="8,6,8,6"/>
+        </Style>
+
+        <Style x:Key="TextBoxStyle" TargetType="TextBox">
+            <Setter Property="FontFamily" Value="Segoe UI, Microsoft YaHei UI, Malgun Gothic"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{StaticResource gray800}"/>
+            <Setter Property="Background" Value="{StaticResource gray100}"/>
+            <Setter Property="Padding" Value="8,6,8,6"/>
+        </Style>
+        <!-- FFUBorderStyle - Simple Windows Style Border -->
+        <Style x:Key="FFUBorderStyle" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{StaticResource gray400}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Margin" Value="2"/>
+        </Style>
+
+        <Style x:Key="AlarmEditBorder" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{StaticResource gray400}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Margin" Value="15,0,5,0"/>
+        </Style>
+        <!-- ValueDisplayStyle - Simple Windows Style Value Display -->
+        <Style x:Key="ValueDisplayStyle" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource gray100}"/>
+            <Setter Property="BorderBrush" Value="{StaticResource gray400}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Width" Value="100"/>
+            <Setter Property="Margin" Value="5"/>
+
+        </Style>
+
+        <!-- ValueTextStyle - Simple Windows Style Value Text -->
+        <Style x:Key="ValueTextStyle" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Segoe UI, Microsoft YaHei UI, Malgun Gothic"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="Foreground" Value="#FF000000"/>
+        </Style>
+
+        <Style x:Key="ArrowButtonStyle" TargetType="Button">
+            <Setter Property="FontFamily" Value="Segoe UI, Microsoft YaHei UI, Malgun Gothic"/>
+            <Setter Property="FontWeight" Value="Normal"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Foreground" Value="{StaticResource gray50}"/>
+            <Setter Property="Background" Value="{StaticResource gray400}"/>
+            <Setter Property="BorderBrush" Value="#FF808080"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Width" Value="46"/>
+            <Setter Property="Height" Value="32"/>
+            <Setter Property="Margin" Value="4,0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" 
+                                BorderBrush="{TemplateBinding BorderBrush}" 
+                                BorderThickness="{TemplateBinding BorderThickness}" 
+                                CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="HeaderStyle" TargetType="TextBlock">
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="FFUButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#4A90E2"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Margin" Value="2"/>
+        </Style>
+
+        <Style x:Key="StatusIndicatorStyle" TargetType="Ellipse">
+            <Setter Property="Width" Value="30"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+        </Style>
+
+        <Style x:Key="h3-text" TargetType="TextBlock">
+            <Setter Property="VerticalAlignment" Value="Center"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+        </Style>
+
+        <Style x:Key="AlarmDescription" TargetType="TextBlock">
+            <Setter Property="Background" Value="{StaticResource gray100}"/>
+            <Setter Property="Padding" Value="5,6,5,5"/>
+            <Setter Property="TextAlignment" Value="Left"/>
+        </Style>
+    </Page.Resources>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="200"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="400"/>
+            <ColumnDefinition Width="200"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+        <Border Grid.Column="0" Grid.Row="0" BorderThickness="1" BorderBrush="#BDC3C7" Margin="5">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <Border Grid.Row="0" Background="{StaticResource gray400}" Padding="10">
+                    <TextBlock Text="FFU Setting" Style="{StaticResource HeaderTextStyle-title}" Width="auto"/>
+                </Border>
+
+                <UniformGrid Grid.Row="1" Rows="1" Columns="2" Margin="0,15,0,8" >
+                        <TextBlock Grid.Column="0" Text="Slave ID" Style="{StaticResource h3-text}" Margin="20,0,0,0"/>
+                    <Border Style="{StaticResource FFUBorderStyle}" Margin="45,0">
+                        <TextBox x:Name="TxtIds" Style="{StaticResource TextBoxStyle}" Width="100" TextAlignment="Center" Text="1,2" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </UniformGrid>
+
+                <UniformGrid Grid.Row="2" Rows="1" Columns="2" Margin="0,15,0,8" >
+                    <TextBlock Grid.Column="0" Text="COM Port" Style="{StaticResource h3-text}" Margin="20,0,0,0"/>
+                    <Border Style="{StaticResource FFUBorderStyle}" Margin="45,0">
+                        <TextBox x:Name="TxtCom" Style="{StaticResource TextBoxStyle}" Width="100" TextAlignment="Center" Text="COM6" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </UniformGrid>
+
+
+                <UniformGrid Grid.Row="3" Rows="1" Columns="2" Margin="0,15,0,8" >
+                    <TextBlock Grid.Column="0" Text="MAX RPM" Style="{StaticResource h3-text}" Margin="20,0,0,0"/>
+                    <Border Style="{StaticResource FFUBorderStyle}" Margin="45,0">
+                        <TextBox x:Name="TxtMaxRPM" Style="{StaticResource TextBoxStyle}" Width="100" TextAlignment="Center" Text="1500" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </UniformGrid>
+
+                <UniformGrid Grid.Row="4" Rows="1" Columns="2" Margin="0,15,0,8" >
+                    <TextBlock Grid.Column="0" Text="ON/OFF RPM" Style="{StaticResource h3-text}" Margin="20,0,0,0"/>
+                    <Border Style="{StaticResource FFUBorderStyle}" Margin="45,0">
+                        <TextBox x:Name="TxtON_OFFRPM" Style="{StaticResource TextBoxStyle}" Width="100" TextAlignment="Center" Text="800" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </UniformGrid>
+
+                <UniformGrid Grid.Row="5" Rows="1" Columns="5" Margin="0,15,0,8" >
+                    
+                    <Button x:Name="BtnOpen" Content="Open" Click="BtnOpen_Click" Margin="0,0,8,0"/>
+                    <Button x:Name="BtnClose" Content="Close"  Click="BtnClose_Click" Margin="0,0,8,0" />
+                    <Button x:Name="BtnStart" Content="Start Send" Click="BtnStart_Click" Margin="0,0,8,0" />
+                    <Button x:Name="BtnStop" Content="Stop" Click="BtnStop_Click" />
+                    <Button x:Name="BtnRescan" Content="Rescan IDs" Click="BtnRescan_Click" Visibility="Collapsed"/>
+
+                </UniformGrid>
+
+            </Grid>
+        </Border>
+
+        <StackPanel>
             <StackPanel Orientation="Horizontal" Grid.Row="1" Margin="0,0,0,8" Grid.ColumnSpan="2">
-                <TextBox x:Name="TxtCom" Width="80" Text="COM6" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                <Button x:Name="BtnOpen" Content="Open" Width="90" Click="BtnOpen_Click" Margin="0,0,8,0"/>
-                <Button x:Name="BtnClose" Content="Close" Width="90" Click="BtnClose_Click" Margin="0,0,8,0" />
-                <Button x:Name="BtnStart" Content="Start Send" Width="110" Click="BtnStart_Click" Margin="0,0,8,0" />
-                <Button x:Name="BtnStop" Content="Stop" Width="90" Click="BtnStop_Click" />
-                <Button x:Name="BtnRescan" Content="Rescan IDs" Click="BtnRescan_Click" Visibility="Collapsed"/>
 
             </StackPanel>
             <StackPanel Orientation="Horizontal" Margin="0,0,0,8" Grid.ColumnSpan="2">
-                <TextBlock Text="FFU ID(s):" VerticalAlignment="Center" Margin="0,0,8,0"/>
-                <TextBox x:Name="TxtIds" Width="160" Text="1,2" Margin="0,0,16,0"/>
             </StackPanel>
         </StackPanel>
         

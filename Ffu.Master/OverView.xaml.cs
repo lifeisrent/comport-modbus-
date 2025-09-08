@@ -49,23 +49,27 @@ namespace Ffu.Master
         #region Control Events : Click, Checked, Log
         private void OnChkChecked(object sender, RoutedEventArgs e)
         {
-            if (sender is CheckBox cb && TryGetId(cb.Tag, out int id))
+            int id;
+            if (sender is CheckBox cb && TryGetId(cb.Tag, out id) ||
+                sender is DevExpress.Xpf.Editors.CheckEdit ce && TryGetId(ce.Tag, out id))
             {
                 int rpm = 800;
-                if (FindName($"TxtSetRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
+
+                SetControlText($"TxtSetRpm{id}", rpm.ToString());
                 SendSetOnce(id, rpm);
-                // Enable up/down buttons for this ID
                 SetUpDownButtonsEnabled(id, true);
             }
         }
         private void OnChkUnchecked(object sender, RoutedEventArgs e)
         {
-            if (sender is CheckBox cb && TryGetId(cb.Tag, out int id))
+            int id;
+            if (sender is CheckBox cb && TryGetId(cb.Tag, out id) ||
+                sender is DevExpress.Xpf.Editors.CheckEdit ce && TryGetId(ce.Tag, out id))
             {
                 int rpm = 0;
-                if (FindName($"TxtSetRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
+
+                SetControlText($"TxtSetRpm{id}", rpm.ToString());
                 SendSetOnce(id, rpm);
-                // Disable up/down buttons for this ID
                 SetUpDownButtonsEnabled(id, false);
             }
         }
@@ -383,7 +387,9 @@ namespace Ffu.Master
         private void AdjustAndSend(int id, int delta)
         {
             var rpm = Math.Clamp(GetCurrentRpm(id) + delta, 0, MAXRPM);
-            if (FindName($"TxtSetRpm{id}") is TextBox tb) tb.Text = rpm.ToString();
+
+            SetControlText($"TxtSetRpm{id}", rpm.ToString());
+
             SendSetOnce(id, rpm);
         }
         private int GetId()
@@ -544,7 +550,7 @@ namespace Ffu.Master
         {
             if (_perTarget.TryGetValue(id, out var v)) return v;
             // TextBox를 이름으로 찾아서 파싱 (초기 0)
-            var tb = (TextBox?)FindName($"TxtSetRpm{id}");
+            var tb = (TextBlock?)FindName($"TxtSetRpm{id}");
             if (tb != null && int.TryParse(tb.Text, out var t)) return t;
             return 0;
         }
@@ -582,8 +588,7 @@ namespace Ffu.Master
             {
                 Dispatcher.Invoke(() =>
                 {
-                    if (FindName($"TxtCurRpm{id}") is TextBox tb)
-                        tb.Text = rpm.ToString();
+                    SetControlText($"TxtCurRpm{id}", rpm.ToString());
                 });
             }
         }
@@ -593,12 +598,22 @@ namespace Ffu.Master
             var rpmById = new Dictionary<int, int>();
             for (int id = 1; id <= 6; id++)
             {
-                if (FindName($"TxtSetRpm{id}") is TextBox tb && int.TryParse(tb.Text, out int rpm))
+                var control = FindName($"TxtSetRpm{id}");
+                string? text = control switch
+                {
+                    TextBox tb => tb.Text,
+                    TextBlock tblk => tblk.Text,
+                    _ => null
+                };
+
+                if (text != null && int.TryParse(text, out int rpm))
                     rpmById[id] = rpm;
             }
+
             var obj = new { port, rpmById, ts = DateTime.Now };
             File.WriteAllText($"rpm_{port}.json", JsonSerializer.Serialize(obj));
         }
+
 
         public enum FfuStatus { None, Good, Error }
 
@@ -623,6 +638,22 @@ namespace Ffu.Master
             if (FindName($"BtnDown{id}") is Button btnDown)
                 btnDown.IsEnabled = enabled;
         }
+
+        private void SetControlText(string name, string text)
+        {
+            var control = FindName(name);
+            switch (control)
+            {
+                case TextBox tb:
+                    tb.Text = text;
+                    break;
+
+                case TextBlock tblk:
+                    tblk.Text = text;
+                    break;
+            }
+        }
+
     }
 
 }
