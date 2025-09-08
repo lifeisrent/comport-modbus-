@@ -370,6 +370,7 @@
         <Border Grid.Row="0" Grid.Column="0" BorderThickness="1" BorderBrush="#BDC3C7" Margin="5">
             <Grid>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
@@ -378,8 +379,11 @@
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
+                <Border Grid.Row="0" Grid.ColumnSpan="2" Background="{StaticResource gray400}" Padding="10">
+                    <TextBlock Text="Fan Unit" Style="{StaticResource HeaderTextStyle-title}" Foreground="White"/>
+                </Border>
                 <!-- FFU_01 -->
-                <Border Grid.Row="0" Grid.Column="0" Margin="5" Background="{StaticResource gray200}" CornerRadius="10">
+                <Border Grid.Row="1" Grid.Column="0" Margin="5" Background="{StaticResource gray200}" CornerRadius="10">
                     <Grid>
                         <Ellipse Fill="#3498DB" Width="150" Height="150" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="3" Width="120" Height="120" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -395,7 +399,7 @@
                 </Border>
 
                 <!-- FFU_02 -->
-                <Border Grid.Row="1" Grid.Column="0" Margin="5" Background="{StaticResource gray200}" CornerRadius="10">
+                <Border Grid.Row="2" Grid.Column="0" Margin="5" Background="{StaticResource gray200}" CornerRadius="10">
                     <Grid>
                         <Ellipse Fill="#3498DB" Width="150" Height="150" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="3" Width="120" Height="120" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -411,7 +415,7 @@
                 </Border>
 
                 <!-- FFU_03 -->
-                <Border Grid.Row="0" Grid.Column="1" Margin="5" Background="{StaticResource gray200}" CornerRadius="10">
+                <Border Grid.Row="1" Grid.Column="1" Margin="5" Background="{StaticResource gray200}" CornerRadius="10">
                     <Grid>
                         <Ellipse Fill="#3498DB" Width="150" Height="150" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="3" Width="120" Height="120" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -427,7 +431,7 @@
                 </Border>
 
                 <!-- FFU_04 -->
-                <Border Grid.Row="1" Grid.Column="1" Margin="5" Background="{StaticResource gray200}" CornerRadius="10">
+                <Border Grid.Row="2" Grid.Column="1" Margin="5" Background="{StaticResource gray200}" CornerRadius="10">
                     <Grid>
                         <Ellipse Fill="#3498DB" Width="150" Height="150" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="3" Width="120" Height="120" HorizontalAlignment="Center" VerticalAlignment="Center"/>
@@ -646,14 +650,7 @@
             </Grid>
         </Border>
         <Grid Grid.Column="2" Grid.Row="1">
-            <UniformGrid Grid.Row="2" Columns="6" Margin="8">
-                <Ellipse x:Name="StatusCircle1" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
-                <Ellipse x:Name="StatusCircle2" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
-                <Ellipse x:Name="StatusCircle3" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
-                <Ellipse x:Name="StatusCircle4" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
-                <Ellipse x:Name="StatusCircle5" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
-                <Ellipse x:Name="StatusCircle6" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
-            </UniformGrid>
+
         </Grid>
     </Grid>
 
