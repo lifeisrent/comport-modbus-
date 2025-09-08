@@ -21,10 +21,13 @@
     </Page.Resources>
 
     <Grid>
-        <DockPanel>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="40"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
             <!-- 상단바 -->
-            <Grid DockPanel.Dock="Top" Background="{StaticResource gray600}" >
-                <Border Grid.Row="0" BorderThickness="1" BorderBrush="#72787f"  >
+            <Grid Grid.Row="0" DockPanel.Dock="Top" Background="{StaticResource gray600}" >
+                <Border BorderThickness="1" BorderBrush="#72787f"  >
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*"/>
@@ -62,7 +65,8 @@
             </Grid>
 
             <!-- 본문 Frame -->
+        <Grid Grid.Row="1">
             <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden"/>
-        </DockPanel>
+        </Grid>
     </Grid>
 </Page>

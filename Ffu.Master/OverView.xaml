@@ -358,7 +358,6 @@
     
     <Grid x:Name="mGrid">
         <Grid.RowDefinitions>
-            <RowDefinition Height="40"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="200"/>
         </Grid.RowDefinitions>
@@ -369,7 +368,7 @@
         </Grid.ColumnDefinitions>
 
 
-        <Grid Margin="12" Grid.Row="1" Grid.Column="0" Height="252" Width="535" HorizontalAlignment="Left" VerticalAlignment="Top" >
+        <Grid Margin="12" Grid.Row="0" Grid.Column="0" Height="252" Width="535" HorizontalAlignment="Left" VerticalAlignment="Top" >
             <!-- Current RPM (Read) 표시 영역 -->
             <GroupBox Header="Current RPM (Read)" Margin="8">
                 <UniformGrid Rows="1" Columns="6">
@@ -408,11 +407,11 @@
 
         </Grid>
 
-        <Grid Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2" Margin="12" Height="272" Width="535" VerticalAlignment="Top" Grid.RowSpan="2">
+        <Grid Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2" Margin="12" Height="272" Width="535" VerticalAlignment="Top" Grid.RowSpan="2">
             <TextBox x:Name="TxtLog" IsReadOnly="True" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap"/>
         </Grid>
 
-        <Border Grid.Column="1" Grid.Row="1" BorderThickness="1" BorderBrush="#BDC3C7" Margin="5">
+        <Border Grid.Column="1" Grid.Row="0" BorderThickness="1" BorderBrush="#BDC3C7" Margin="5">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -512,7 +511,7 @@
                 </StackPanel>
             </Grid>
         </Border>
-        <Border Grid.Column="2" Grid.Row="1" BorderThickness="1" BorderBrush="#BDC3C7" Margin="5">
+        <Border Grid.Column="2" Grid.Row="0" BorderThickness="1" BorderBrush="#BDC3C7" Margin="5">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -609,7 +608,7 @@
                 </Border>
             </Grid>
         </Border>
-        <Grid Grid.Column="2" Grid.Row="2">
+        <Grid Grid.Column="2" Grid.Row="1">
             <UniformGrid Grid.Row="2" Columns="6" Margin="8">
                 <Ellipse x:Name="StatusCircle1" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
                 <Ellipse x:Name="StatusCircle2" Width="32" Height="32" Fill="Gray" Stroke="Black" StrokeThickness="2" Margin="4"/>
