@@ -9,14 +9,26 @@
              Height="700" Width="1250"
              Background="White">
     <Page.Resources>
-        <SolidColorBrush x:Key="gray50" Color="#F7F8F9"/>
-        <SolidColorBrush x:Key="gray100" Color="#E8EBED"/>
-        <SolidColorBrush x:Key="gray200" Color="#C9CDD2"/>
-        <SolidColorBrush x:Key="gray400" Color="#9EA4AA"/>
-        <SolidColorBrush x:Key="gray500" Color="#72787F"/>
-        <SolidColorBrush x:Key="gray600" Color="#454C53"/>
-        <SolidColorBrush x:Key="gray800" Color="#26282B"/>
-        <SolidColorBrush x:Key="gray900" Color="#1B1D1F"/>
+        <Color x:Key="gray50Color">#F7F8F9</Color>
+        <Color x:Key="gray100Color">#E8EBED</Color>
+        <Color x:Key="gray200Color">#C9CDD2</Color>
+        <Color x:Key="gray400Color">#9EA4AA</Color>
+        <Color x:Key="gray500Color">#72787F</Color>
+        <Color x:Key="gray600Color">#454C53</Color>
+        <Color x:Key="gray800Color">#26282B</Color>
+        <Color x:Key="gray900Color">#1B1D1F</Color>
+
+        <!-- Gray Brushes -->
+        <SolidColorBrush x:Key="gray50" Color="{StaticResource gray50Color}"/>
+        <SolidColorBrush x:Key="gray100" Color="{StaticResource gray100Color}"/>
+        <SolidColorBrush x:Key="gray200" Color="{StaticResource gray200Color}"/>
+        <SolidColorBrush x:Key="gray400" Color="{StaticResource gray400Color}"/>
+        <SolidColorBrush x:Key="gray500" Color="{StaticResource gray500Color}"/>
+        <SolidColorBrush x:Key="gray600" Color="{StaticResource gray600Color}"/>
+        <SolidColorBrush x:Key="gray800" Color="{StaticResource gray800Color}"/>
+        <SolidColorBrush x:Key="gray900" Color="{StaticResource gray900Color}"/>
+
+
 
         <Style x:Key="slider" TargetType="dxe:CheckEdit">
             <Setter Property="FontFamily" Value="Segoe UI"/>
@@ -360,8 +372,50 @@
             <Setter Property="Padding" Value="5,6,5,5"/>
             <Setter Property="TextAlignment" Value="Left"/>
         </Style>
+
+        <Style x:Key="FlatRadioButtonStyle" TargetType="RadioButton">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Padding" Value="20,10"/>
+            <Setter Property="Margin" Value="5"/>
+            <Setter Property="Background" Value="{StaticResource gray600}"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Border Background="{TemplateBinding Background}" 
+                        BorderBrush="{TemplateBinding BorderBrush}"
+                        BorderThickness="{TemplateBinding BorderThickness}"
+                        Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" 
+                                      VerticalAlignment="Center" 
+                                      Content="{TemplateBinding Content}"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Background" Value="{StaticResource gray500}"/>
+                </Trigger>
+                <Trigger Property="IsPressed" Value="True">
+                    <Setter Property="Background" Value="{StaticResource gray800}"/>
+                </Trigger>
+                <Trigger Property="IsChecked" Value="True">
+                    <Setter Property="Background" Value="{StaticResource gray400}"/>
+                    <Setter Property="Foreground" Value="White"/>
+                </Trigger>
+                <MultiTrigger>
+                    <MultiTrigger.Conditions>
+                        <Condition Property="IsChecked" Value="True"/>
+                        <Condition Property="IsMouseOver" Value="True"/>
+                    </MultiTrigger.Conditions>
+                    <Setter Property="Background" Value="{StaticResource gray200}"/>
+                </MultiTrigger>
+            </Style.Triggers>
+        </Style>
+
     </Page.Resources>
-    <Grid>
+    <Grid Margin="-1,0,1,0">
         <Grid.RowDefinitions>
             <RowDefinition Height="*"/>
             <RowDefinition Height="200"/>
@@ -380,9 +434,18 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
-                <Border Grid.Row="0" Background="{StaticResource gray400}" Padding="10">
+                <Border Grid.Row="0" Padding="10">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                            <GradientStop Color="#4CAF79" Offset="0"/>
+                            <GradientStop Color="#1D8348" Offset="0.4"/>
+                            <GradientStop Color="#72787F" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
                     <TextBlock Text="FFU Setting" Style="{StaticResource HeaderTextStyle-title}" Width="auto"/>
                 </Border>
 
@@ -415,16 +478,19 @@
                     </Border>
                 </UniformGrid>
 
-                <UniformGrid Grid.Row="5" Rows="1" Columns="5" Margin="0,15,0,8" >
-                    
-                    <Button x:Name="BtnOpen" Content="Open" Click="BtnOpen_Click" Margin="0,0,8,0"/>
-                    <Button x:Name="BtnClose" Content="Close"  Click="BtnClose_Click" Margin="0,0,8,0" />
-                    <Button x:Name="BtnStart" Content="Start Send" Click="BtnStart_Click" Margin="0,0,8,0" />
-                    <Button x:Name="BtnStop" Content="Stop" Click="BtnStop_Click" />
-                    <Button x:Name="BtnRescan" Content="Rescan IDs" Click="BtnRescan_Click" Visibility="Collapsed"/>
-
+                <UniformGrid Grid.Row="5" Rows="1" Columns="3" Margin="0,15,0,8" >
+                    <TextBlock Grid.Column="0" Text="Port" Style="{StaticResource h3-text}" Margin="20,0,0,0"/>
+                    <RadioButton x:Name="RbOpen" Style="{StaticResource FlatRadioButtonStyle}" Content="Open" GroupName="PortCtrl" Checked="RbOpen_Checked" Margin="0,0,8,0"/>
+                    <RadioButton x:Name="RbClose" Style="{StaticResource FlatRadioButtonStyle}" Content="Close" GroupName="PortCtrl" Checked="RbClose_Checked" Margin="0,0,8,0" IsEnabled="False"/>
                 </UniformGrid>
 
+                <UniformGrid Grid.Row="6" Rows="1" Columns="3" Margin="0,15,0,8" >
+                    <TextBlock x:Name="DevStart" Grid.Column="0" Text="Dev-Start" Style="{StaticResource h3-text}" Margin="20,0,0,0"/>
+
+                    <Button x:Name="BtnStart" Content="Start Send" Click="BtnStart_Click" Margin="0,0,8,0" />
+                    <Button x:Name="BtnStop" Content="Stop" Click="BtnStop_Click" />
+
+                </UniformGrid>
             </Grid>
         </Border>
 

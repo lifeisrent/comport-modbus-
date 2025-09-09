@@ -26,45 +26,49 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
             <!-- 상단바 -->
-            <Grid Grid.Row="0" DockPanel.Dock="Top" Background="{StaticResource gray600}" >
-                <Border BorderThickness="1" BorderBrush="#72787f"  >
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="Auto"/>
-                            <ColumnDefinition Width="Auto"/>
-                        </Grid.ColumnDefinitions>
+        <Grid Grid.Row="0" DockPanel.Dock="Top" Background="{StaticResource gray600}">
+            <Border BorderThickness="1" BorderBrush="#72787f">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="200"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
 
-                        <StackPanel Orientation="Horizontal" Grid.Column="0" VerticalAlignment="Center" Margin="10,0">
-                            <TextBlock Text="FFU Ctrl system" Foreground="White" FontSize="16" FontWeight="Bold"/>
-                        </StackPanel>
+                    <StackPanel Orientation="Horizontal" Grid.Column="0" VerticalAlignment="Center" Margin="10,0">
+                        <TextBlock Text="FFU Ctrl system" Foreground="White" FontSize="16" FontWeight="Bold"/>
+                    </StackPanel>
 
-                        <Button Grid.Column="1" Content="Setting" Foreground="White" Margin="5" Padding="10,5" BorderThickness="0" Click="BtnSetting_Click">
+                    <!-- Tab-style buttons container -->
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Top" Margin="10,0,0,0">
 
-                            <Button.Background>
+                        <!-- View Tab -->
+                        <Border CornerRadius="8,8,0,0" Margin="0,5,15,0" BorderThickness="1,1,1,0" BorderBrush="#BDC3C7">
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                                    <GradientStop Color="#95A5A6" Offset="0"/>
+                                    <GradientStop Color="#7F8C8D" Offset="1"/>
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Button Content="View" Foreground="White" FontWeight="SemiBold" Padding="115,8" BorderThickness="0" Background="Transparent" Click="BtnView_Click"/>
+                        </Border>
 
+                        <!-- Setting Tab -->
+                        <Border CornerRadius="8,8,0,0" Margin="0,5,0,0" BorderThickness="1,1,1,0" BorderBrush="#BDC3C7">
+                            <Border.Background>
                                 <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                                     <GradientStop Color="#27AE60" Offset="0"/>
                                     <GradientStop Color="#1D8348" Offset="1"/>
                                 </LinearGradientBrush>
-
-                            </Button.Background>
-
-                        </Button>
-                        <Button Grid.Column="2" Content="EXIT" Foreground="White" Margin="5,5,25,5" Padding="10,5" BorderThickness="0" Click="BtnExit_Click">
-                            <Button.Background>
-                                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
-                                    <GradientStop Color="#E74C3C" Offset="0"/>
-                                    <GradientStop Color="#A93226" Offset="1"/>
-                                </LinearGradientBrush>
-                            </Button.Background>
-                        </Button>
-                    </Grid>
-                </Border>
-
-            </Grid>
-
-            <!-- 본문 Frame -->
+                            </Border.Background>
+                            <Button Content="Setting" Foreground="White" FontWeight="SemiBold" Padding="115,8" BorderThickness="0" Background="Transparent" Click="BtnSetting_Click"/>
+                        </Border>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+        <!-- 본문 Frame -->
         <Grid Grid.Row="1">
             <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden"/>
         </Grid>

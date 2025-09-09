@@ -35,8 +35,6 @@ namespace Ffu.Master
         private void BtnSetting_Click(object sender, RoutedEventArgs e)
     => MainFrame.Navigate(_settingView);
 
-        private void BtnExit_Click(object sender, RoutedEventArgs e)
-            => MainFrame.Navigate(_overView);
         public void Cleanup()
         {
             try
@@ -46,5 +44,8 @@ namespace Ffu.Master
             }
             catch { }
         }
+
+        private void BtnView_Click(object sender, RoutedEventArgs e)
+            => MainFrame.Navigate(_overView);
     }
 }

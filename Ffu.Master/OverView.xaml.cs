@@ -88,7 +88,7 @@ namespace Ffu.Master
             if (sender is FrameworkElement fe && TryGetId(fe.Tag, out int id))
                 AdjustAndSend(id, -100);
         }
-        public async Task OpenPort(string com)
+        public async Task<bool> OpenPort(string com)
         {
             try
             {
@@ -105,14 +105,16 @@ namespace Ffu.Master
                 _port.DiscardOutBuffer();
                 await Task.Delay(200);
 
-                // ScanSlaveID(); // ← no-op 처리
-                //_ids = ParseIdSet(TxtIds.Text);
-
                 Log($"OPEN {_port.PortName} 9600");
-                //BtnOpen.IsEnabled = false; BtnClose.IsEnabled = true; BtnStart.IsEnabled = true;
+                return true; 
             }
-            catch (Exception ex) { Log($"Open FAIL: {ex.Message}"); }
+            catch (Exception ex)
+            {
+                Log($"Open FAIL: {ex.Message}");
+                return false; 
+            }
         }
+
 
         public void StartPolling()
         {

@@ -31,6 +31,13 @@ namespace Ffu.Master
         {
             InitializeComponent();
             _overView = overView;
+
+        #if !DEBUG
+                    BtnStart.Visibility = Visibility.Collapsed;
+                    BtnStop.Visibility = Visibility.Collapsed;
+                    // TextBlock도 숨기려면
+                    DevStart.Visibility = Visibility.Collapsed;
+        #endif
         }
         public string ComText
         {
@@ -38,29 +45,9 @@ namespace Ffu.Master
             set => TxtCom.Text = value;
         }
 
-        private async void BtnOpen_Click(object sender, RoutedEventArgs e)
-        {
-            if (!int.TryParse(TxtMaxRPM.Text, out int val))
-            {
-                MessageBox.Show("maxrpm edit error.");
-                return;
-            }
-
-            if (val > hardcoded_MAXRPM)
-                val = hardcoded_MAXRPM;
-
-            FFUModel.MaxRpm = val;
-
-            _overView.SetIdsText(IdsText);
-            await _overView.OpenPort(ComText); // 포트 오픈 실제 수행
-        }
         private void TxtMaxRPM_PreviewTextInput(object sender, TextCompositionEventArgs e)
         {
             e.Handled = !int.TryParse(e.Text, out _); // 숫자 아니면 입력 무시
-        }
-        private void BtnClose_Click(object sender, RoutedEventArgs e)
-        {
-            _overView.Cleanup();
         }
 
         private void BtnStart_Click(object sender, RoutedEventArgs e)
@@ -77,6 +64,43 @@ namespace Ffu.Master
         private async void BtnRescan_Click(object sender, RoutedEventArgs e)
         {
             await _overView.BtnRescan_Click(); // 포트 오픈 실제 수행
+        }
+
+        private async void RbOpen_Checked(object sender, RoutedEventArgs e)
+        {
+            if (!int.TryParse(TxtMaxRPM.Text, out int val))
+            {
+                MessageBox.Show("maxrpm edit error.");
+                return;
+            }
+
+            if (val > hardcoded_MAXRPM)
+                val = hardcoded_MAXRPM;
+
+            FFUModel.MaxRpm = val;
+            _overView.SetIdsText(IdsText);
+
+            bool success = await _overView.OpenPort(ComText);
+
+#if !DEBUG
+                if (success)
+                {
+                    _overView.StartPolling(); // 릴리즈 모드에서는 Open 성공 시 바로 Start
+                }
+                else
+                {
+                }
+#endif
+            RbClose.IsEnabled = success;
+        }
+
+        private void RbClose_Checked(object sender, RoutedEventArgs e)
+        {
+            #if !DEBUG
+                // Release 모드: StopPolling 먼저 실행
+                BtnStop_Click(sender, e);
+            #endif
+            _overView.Cleanup();
         }
     }
 }
