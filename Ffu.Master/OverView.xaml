@@ -274,6 +274,16 @@
             <Setter Property="BorderThickness" Value="2"/>
             <Setter Property="Margin" Value="15,0,5,0"/>
         </Style>
+
+
+        <Style x:Key="FFUBorderLong" TargetType="Border">
+            <Setter Property="BorderBrush" Value="{StaticResource gray400}"/>
+            <Setter Property="BorderThickness" Value="2"/>
+            <Setter Property="Margin" Value="15,0,5,0"/>
+            <Setter Property="HorizontalAlignment" Value="Stretch"/>
+            <Setter Property="Width" Value="auto"/>
+        </Style>
+        
         <!-- ValueDisplayStyle - Simple Windows Style Value Display -->
         <Style x:Key="ValueDisplayStyle" TargetType="Border">
             <Setter Property="Background" Value="{StaticResource gray100}"/>
@@ -373,6 +383,7 @@
                     <RowDefinition Height="auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="*"/>
+                    <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -383,71 +394,98 @@
                     <TextBlock Text="Fan Unit" Style="{StaticResource HeaderTextStyle-title}" Foreground="White"/>
                 </Border>
                 <!-- FFU_01 -->
-                <Border Grid.Row="1" Grid.Column="0" Margin="5" Background="{StaticResource gray200}" CornerRadius="10">
+                <Border Grid.Row="1" Grid.Column="0" Margin="5" Background="{StaticResource gray500}" CornerRadius="10">
                     <Grid>
-                        <Ellipse Fill="#3498DB" Width="150" Height="150" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="3" Width="120" Height="120" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="2" Width="90" Height="90" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="2" Width="60" Height="60" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="#E74C3C" Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="#2980B9" Width="100" Height="100" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="Transparent" Stroke="#34495E" StrokeThickness="2" Width="80" Height="80" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="Transparent" Stroke="#34495E" StrokeThickness="2" Width="60" Height="60" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="Transparent" Stroke="#34495E" StrokeThickness="1" Width="40" Height="40" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="#E74C3C" Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
-                        <StackPanel VerticalAlignment="Bottom" Margin="10">
-                            <TextBlock Text="FFU_01" Foreground="White" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center"/>
-                            <TextBlock x:Name="TxtCurRpm1" Text="-" Foreground="White" FontSize="14" HorizontalAlignment="Center"/>
-                        </StackPanel>
+                            <Grid VerticalAlignment="Bottom" Margin="10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+
+                                <TextBlock Text="FFU_01" Foreground="White" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center" Grid.Column="0"/>
+                                <TextBlock x:Name="TxtCurRpm1" Text="-" Foreground="White" FontSize="14" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20,0,0,0" Grid.Column="1"/>
+                                <TextBlock Text="RPM" Foreground="White" FontSize="16" FontWeight="Bold"  VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,20,0" Grid.Column="2"/>
+                            </Grid>
                     </Grid>
-                </Border>
+        </Border>
 
                 <!-- FFU_02 -->
-                <Border Grid.Row="2" Grid.Column="0" Margin="5" Background="{StaticResource gray200}" CornerRadius="10">
+                <Border Grid.Row="1" Grid.Column="1" Margin="5" Background="{StaticResource gray500}" CornerRadius="10">
                     <Grid>
-                        <Ellipse Fill="#3498DB" Width="150" Height="150" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="3" Width="120" Height="120" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="2" Width="90" Height="90" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="2" Width="60" Height="60" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="#27AE60" Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="#2980B9" Width="100" Height="100" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="Transparent" Stroke="#34495E" StrokeThickness="2" Width="80" Height="80" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="Transparent" Stroke="#34495E" StrokeThickness="2" Width="60" Height="60" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="Transparent" Stroke="#34495E" StrokeThickness="1" Width="40" Height="40" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="#27AE60" Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
-                        <StackPanel VerticalAlignment="Bottom" Margin="10">
-                            <TextBlock Text="FFU_02" Foreground="White" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center"/>
-                            <TextBlock x:Name="TxtCurRpm2" Text="-" Foreground="White" FontSize="14" HorizontalAlignment="Center"/>
-                        </StackPanel>
+                        <Grid VerticalAlignment="Bottom" Margin="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="FFU_02" Foreground="White" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center" Grid.Column="0"/>
+                            <TextBlock x:Name="TxtCurRpm2" Text="-" Foreground="White" FontSize="14" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20,0,0,0" Grid.Column="1"/>
+                            <TextBlock Text="RPM" Foreground="White" FontSize="16" FontWeight="Bold"  VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,20,0" Grid.Column="2"/>
+                        </Grid>
                     </Grid>
                 </Border>
 
                 <!-- FFU_03 -->
-                <Border Grid.Row="1" Grid.Column="1" Margin="5" Background="{StaticResource gray200}" CornerRadius="10">
+                <Border Grid.Row="2" Grid.Column="0" Margin="5" Background="{StaticResource gray500}" CornerRadius="10">
                     <Grid>
-                        <Ellipse Fill="#3498DB" Width="150" Height="150" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="3" Width="120" Height="120" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="2" Width="90" Height="90" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="2" Width="60" Height="60" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="#27AE60" Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="#2980B9" Width="100" Height="100" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="Transparent" Stroke="#34495E" StrokeThickness="2" Width="80" Height="80" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="Transparent" Stroke="#34495E" StrokeThickness="2" Width="60" Height="60" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="Transparent" Stroke="#34495E" StrokeThickness="1" Width="40" Height="40" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="#27AE60" Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
-                        <StackPanel VerticalAlignment="Bottom" Margin="10">
-                            <TextBlock Text="FFU_03" Foreground="White" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center"/>
-                            <TextBlock x:Name="TxtCurRpm3" Text="-" Foreground="White" FontSize="14" HorizontalAlignment="Center"/>
-                        </StackPanel>
+                        <Grid VerticalAlignment="Bottom" Margin="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="FFU_03" Foreground="White" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center" Grid.Column="0"/>
+                            <TextBlock x:Name="TxtCurRpm3" Text="-" Foreground="White" FontSize="14" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20,0,0,0" Grid.Column="1"/>
+                            <TextBlock Text="RPM" Foreground="White" FontSize="16" FontWeight="Bold"  VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,20,0" Grid.Column="2"/>
+                        </Grid>
                     </Grid>
                 </Border>
 
                 <!-- FFU_04 -->
-                <Border Grid.Row="2" Grid.Column="1" Margin="5" Background="{StaticResource gray200}" CornerRadius="10">
+                <Border Grid.Row="2" Grid.Column="1" Margin="5" Background="{StaticResource gray500}" CornerRadius="10">
                     <Grid>
-                        <Ellipse Fill="#3498DB" Width="150" Height="150" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="3" Width="120" Height="120" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="2" Width="90" Height="90" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="Transparent" Stroke="#2C3E50" StrokeThickness="2" Width="60" Height="60" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                        <Ellipse Fill="#27AE60" Width="20" Height="20" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="#2980B9" Width="100" Height="100" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="Transparent" Stroke="#34495E" StrokeThickness="2" Width="80" Height="80" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="Transparent" Stroke="#34495E" StrokeThickness="2" Width="60" Height="60" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="Transparent" Stroke="#34495E" StrokeThickness="1" Width="40" Height="40" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <Ellipse Fill="#27AE60" Width="12" Height="12" HorizontalAlignment="Center" VerticalAlignment="Center"/>
 
-                        <StackPanel VerticalAlignment="Bottom" Margin="10">
-                            <TextBlock Text="FFU_04" Foreground="White" FontWeight="Bold" FontSize="16" HorizontalAlignment="Center"/>
-                            <TextBlock x:Name="TxtCurRpm4" Text="-" Foreground="White" FontSize="14" HorizontalAlignment="Center"/>
-                        </StackPanel>
+                        <Grid VerticalAlignment="Bottom" Margin="10">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <TextBlock Text="FFU_04" Foreground="White" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" HorizontalAlignment="Center" Grid.Column="0"/>
+                            <TextBlock x:Name="TxtCurRpm4" Text="-" Foreground="White" FontSize="14" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="20,0,0,0" Grid.Column="1"/>
+                            <TextBlock Text="RPM" Foreground="White" FontSize="16" FontWeight="Bold"  VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,0,20,0" Grid.Column="2"/>
+                        </Grid>
                     </Grid>
                 </Border>
             </Grid>
         </Border>
-
         <Grid Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2" Margin="12" Height="272" Width="535" VerticalAlignment="Top" Grid.RowSpan="2">
             <TextBox x:Name="TxtLog" IsReadOnly="True" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap"/>
         </Grid>
