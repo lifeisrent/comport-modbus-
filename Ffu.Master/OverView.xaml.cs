@@ -44,6 +44,11 @@ namespace Ffu.Master
                 if (FindName($"BtnUp{i}") is Button btnUp) btnUp.IsEnabled = false;
                 if (FindName($"BtnDown{i}") is Button btnDown) btnDown.IsEnabled = false;
             }
+            #if DEBUG
+                        TxtLog.Visibility = Visibility.Visible;
+            #else
+                        TxtLog.Visibility = Visibility.Collapsed;
+            #endif
         }
 
         #region Control Events : Click, Checked, Log
