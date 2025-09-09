@@ -39,10 +39,24 @@ namespace Ffu.Master
 
         private async void BtnOpen_Click(object sender, RoutedEventArgs e)
         {
+            if (!int.TryParse(TxtMaxRPM.Text, out int val))
+            {
+                MessageBox.Show("maxrpm edit error.");
+                return;
+            }
+
+            if (val > 2000)
+                val = 2000;
+
+            FFUModel.MaxRpm = val;
+
             _overView.SetIdsText(IdsText);
             await _overView.OpenPort(ComText); // 포트 오픈 실제 수행
         }
-
+        private void TxtMaxRPM_PreviewTextInput(object sender, TextCompositionEventArgs e)
+        {
+            e.Handled = !int.TryParse(e.Text, out _); // 숫자 아니면 입력 무시
+        }
         private void BtnClose_Click(object sender, RoutedEventArgs e)
         {
             _overView.Cleanup();

@@ -404,7 +404,7 @@
                 <UniformGrid Grid.Row="3" Rows="1" Columns="2" Margin="0,15,0,8" >
                     <TextBlock Grid.Column="0" Text="MAX RPM" Style="{StaticResource h3-text}" Margin="20,0,0,0"/>
                     <Border Style="{StaticResource FFUBorderStyle}" Margin="45,0">
-                        <TextBox x:Name="TxtMaxRPM" Style="{StaticResource TextBoxStyle}" Width="100" TextAlignment="Center" Text="1500" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <TextBox x:Name="TxtMaxRPM" PreviewTextInput="TxtMaxRPM_PreviewTextInput" Style="{StaticResource TextBoxStyle}" Width="100" TextAlignment="Center" Text="1500" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                     </Border>
                 </UniformGrid>
 

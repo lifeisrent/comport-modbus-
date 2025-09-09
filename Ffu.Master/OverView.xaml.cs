@@ -23,7 +23,7 @@ namespace Ffu.Master
     /// </summary>
     public partial class OverView : Page
     {
-        private const int MAXRPM = 1500; // 최대 RPM 상수 정의
+        //private const int MAXRPM = 1500; // 최대 RPM 상수 정의
 
         private readonly object _ioSync = new object();
         private readonly Dictionary<int, int> _perTarget = new();
@@ -356,7 +356,7 @@ namespace Ffu.Master
         static (byte hi, byte lo) EncodeRpmBE(int rpm)
         {
             if (rpm < 0) rpm = 0;
-            if (rpm > MAXRPM) rpm = MAXRPM;
+            if (rpm > FFUModel.MaxRpm) rpm = FFUModel.MaxRpm;
             return ((byte)((rpm >> 8) & 0xFF), (byte)(rpm & 0xFF));
         }
         static int DecodeRpmBE(byte hi, byte lo) => (hi << 8) | lo;
@@ -391,7 +391,7 @@ namespace Ffu.Master
         }
         private void AdjustAndSend(int id, int delta)
         {
-            var rpm = Math.Clamp(GetCurrentRpm(id) + delta, 0, MAXRPM);
+            var rpm = Math.Clamp(GetCurrentRpm(id) + delta, 0, FFUModel.MaxRpm);
 
             SetControlText($"TxtSetRpm{id}", rpm.ToString());
 
@@ -407,7 +407,7 @@ namespace Ffu.Master
         }
         private static byte[] BuildMessage(int id, int rpm)
         {
-            rpm = Math.Clamp(rpm, 0, MAXRPM);
+            rpm = Math.Clamp(rpm, 0, FFUModel.MaxRpm);
             var (hi, lo) = EncodeRpmBE(rpm);
             return new byte[7] { 0x49, 0x53, (byte)id, 0x06, hi, lo, 0 };
         }

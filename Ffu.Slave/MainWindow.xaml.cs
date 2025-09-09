@@ -15,6 +15,7 @@ namespace Ffu.Slave
 {
     public partial class MainWindow : Window
     {
+        private const int MAXRPM = 2000;
         private SerialPort? _port;
         private CancellationTokenSource? _cts;
         private Task? _loopTask;
@@ -113,7 +114,7 @@ namespace Ffu.Slave
         static (byte hi, byte lo) EncodeRpmBE(int rpm)
         {
             if (rpm < 0) rpm = 0;
-            if (rpm > 1500) rpm = 1500;
+            if (rpm > MAXRPM) rpm = MAXRPM;
             return ((byte)((rpm >> 8) & 0xFF), (byte)(rpm & 0xFF));
         }
         static int DecodeRpmBE(byte hi, byte lo) => (hi << 8) | lo;
@@ -157,7 +158,7 @@ namespace Ffu.Slave
 
                             byte hi = rx[4], lo = rx[5];
                             int rpm = DecodeRpmBE(hi, lo);
-                            if (rpm < 0) rpm = 0; if (rpm > 1500) rpm = 1500;
+                            if (rpm < 0) rpm = 0; if (rpm > MAXRPM) rpm = MAXRPM;
 
                             _rpmById[id] = rpm;
                             UpdateWatchSlotsFor(id, rpm);
