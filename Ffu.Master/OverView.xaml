@@ -6,7 +6,7 @@
       xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
       xmlns:local="clr-namespace:Ffu.Master"
       mc:Ignorable="d" 
-      Height="700" Width="1250"
+      Height="600" Width="1250"
       Background="#F7F8F9">
 
     <Page.Resources>
@@ -383,7 +383,6 @@
                     <RowDefinition Height="auto"/>
                     <RowDefinition Height="*"/>
                     <RowDefinition Height="*"/>
-                    <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -692,6 +691,78 @@
         <Grid Grid.Column="2" Grid.Row="1">
 
         </Grid>
+
+        <!-- Chart Section -->
+        <Border Grid.Row="1" Grid.ColumnSpan="3" BorderThickness="1" BorderBrush="#BDC3C7" Margin="5">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- Chart Header -->
+                <Border Grid.Row="0" Background="#95A5A6" Padding="5">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="TEMP." FontWeight="Bold" Foreground="White" VerticalAlignment="Center"/>
+                        <TextBlock Text="26.00" Background="#3498DB" Foreground="White" Padding="5,2" Margin="10,0" FontWeight="Bold"/>
+                    </StackPanel>
+                </Border>
+
+                <!-- Chart Area -->
+                <Border Grid.Row="1" Background="White" Margin="5">
+                    <Canvas>
+                        <!-- Sample Temperature Chart Line -->
+                        <Polyline Points="50,100 100,80 150,85 200,75 250,90 300,85 350,80 400,75 450,85 500,90 550,85 600,80 650,85 700,90 750,85 800,80 850,85 900,75" 
+                                  Stroke="#3498DB" StrokeThickness="3" Fill="Transparent"/>
+
+                        <!-- Y-axis labels -->
+                        <TextBlock Text="25" Canvas.Left="20" Canvas.Top="95" FontSize="10"/>
+                        <TextBlock Text="24" Canvas.Left="20" Canvas.Top="115" FontSize="10"/>
+                        <TextBlock Text="23" Canvas.Left="20" Canvas.Top="135" FontSize="10"/>
+                    </Canvas>
+                </Border>
+
+                <!-- Chart Footer with Date Controls -->
+                <!-- 기존 코드에서 Padding="5"가 Grid에 잘못 사용됨. Padding은 Grid에서 지원되지 않으므로, Padding을 적용하려면 Grid를 Border로 감싸고 Border에 Padding을 적용해야 함. -->
+
+                <!-- Chart Footer with Date Controls (수정 전)
+                <Grid Grid.Row="2" Background="#ECF0F1" Padding="5">
+                    ...
+                </Grid>
+                -->
+
+                <!-- Chart Footer with Date Controls (수정 후) -->
+                <Border Grid.Row="2" Background="#ECF0F1" Padding="5">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Orientation="Horizontal">
+                            <Button Content="MON" Background="#27AE60" Foreground="White" Margin="2" Padding="10,2"/>
+                            <Button Content="TUE" Background="#27AE60" Foreground="White" Margin="2" Padding="10,2"/>
+                            <Button Content="WED" Background="#27AE60" Foreground="White" Margin="2" Padding="10,2"/>
+                            <Button Content="THU" Background="#95A5A6" Foreground="White" Margin="2" Padding="10,2"/>
+                            <Button Content="FRI" Background="#95A5A6" Foreground="White" Margin="2" Padding="10,2"/>
+                            <Button Content="SAT" Background="#95A5A6" Foreground="White" Margin="2" Padding="10,2"/>
+                            <Button Content="SUN" Background="#95A5A6" Foreground="White" Margin="2" Padding="10,2"/>
+                        </StackPanel>
+
+                        <TextBlock Grid.Column="1" Text="2025.7.23 ~ 2025.7.30" VerticalAlignment="Center" Margin="10,0"/>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <TextBlock Text="AM 08:00 ~ PM 18:00" VerticalAlignment="Center" Margin="10,0"/>
+                            <Button Content="▲" Width="20" Height="20" Margin="2"/>
+                            <Button Content="▼" Width="20" Height="20" Margin="2"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Border>
+
+
     </Grid>
 
 </Page>

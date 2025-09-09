@@ -70,7 +70,7 @@
         </Grid>
         <!-- 본문 Frame -->
         <Grid Grid.Row="1">
-            <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden"/>
+            <Frame x:Name="MainFrame" NavigationUIVisibility="Hidden" VerticalAlignment="Top"/>
         </Grid>
     </Grid>
 </Page>
