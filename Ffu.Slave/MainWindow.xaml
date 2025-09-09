@@ -1,7 +1,7 @@
 ﻿<Window x:Class="Ffu.Slave.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="FFU Slave" Height="370" Width="823" ResizeMode="NoResize">
+        Title="FMS_VACS" Height="370" Width="823" ResizeMode="NoResize" >
     <Grid Margin="12">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>

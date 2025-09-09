@@ -14,5 +14,11 @@
   </ItemGroup>
 	<ItemGroup>
 		<Using Remove="System.Windows.Forms" />
+			<Resource Include="Asset/icon.ico">
+				<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+			</Resource>
+		<Resource Include="Asset/fmstec.ico">
+			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
+		</Resource>
 	</ItemGroup>
 </Project>

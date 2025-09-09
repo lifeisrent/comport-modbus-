@@ -15,6 +15,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using System.IO;
+using Brush = System.Windows.Media.Brush;
 
 namespace Ffu.Master
 {
@@ -310,6 +311,8 @@ namespace Ffu.Master
                                 string desc = hasAlarm ? string.Join(", ", DescribeAlarms(alarms)) : "NONE";
                                 if (isCommLogging) logger.LogResponse(rid, 7, got, error: hasAlarm);
                                 Log($"< DT ID={rid} CMD=0x{rcmd:X2} RPM={rrpm} {(isRemote ? "[REMOTE]" : "[LOCAL]")} ALARM={desc} [{Hex(buf.AsSpan(0, got))}]");
+                                UpdateRpmReadUI(rid, rrpm);
+
                             }
                             else if (rcmd == 0x01)
                             {
@@ -488,10 +491,15 @@ namespace Ffu.Master
                                                    AlarmFlags.IpmOverheat |
                                                    AlarmFlags.AbnormalAnyAlarm)) != 0;
                                     bool isRemote = !alarms.HasFlag(AlarmFlags.LocalMode);
-                                    string desc = hasAlarm ? string.Join(", ", DescribeAlarms(alarms)) : "NONE";
+                                    string desc = hasAlarm ? string.Join(", ", DescribeAlarms(alarms)) : "Normal";
                                     if (isCommLogging) logger.LogResponse(rid, 7, frameLen, error: hasAlarm);
                                     Log($"< DT ID={rid} CMD=0x{cmd:X2} RPM={rrpm} {(isRemote ? "[REMOTE]" : "[LOCAL]")} ALARM={desc} [{Hex(buf.AsSpan(offset, frameLen))}]");
                                     UpdateRpmReadUI(rid, rrpm);
+                                    Dispatcher.Invoke(() =>
+                                    {
+                                        SetStatusCircle(rid, hasAlarm ? FfuStatus.Error : FfuStatus.Good);
+                                        SetAlarmDescription(rid, desc);
+                                    });
                                 }
                                 else if (cmd == 0x01)
                                 {
@@ -578,6 +586,16 @@ namespace Ffu.Master
             _cts = null; _sendTask = null; _port = null;
             //BtnOpen.IsEnabled = true; BtnClose.IsEnabled = false; BtnStart.IsEnabled = false; BtnStop.IsEnabled = false;
             Log("CLOSED");
+
+            Dispatcher.Invoke(() =>
+            {
+                for (int i = 1; i <= 6; i++)
+                {
+                    SetStatusCircle(i, FfuStatus.None);
+                    SetAlarmDescription(i, "None");
+                }
+
+            });
         }
 
         private static bool TryGetId(object? tag, out int id)
@@ -627,13 +645,23 @@ namespace Ffu.Master
         private void SetStatusCircle(int id, FfuStatus status)
         {
             if (id < 1 || id > 6) return;
-            var ellipse = FindName($"StatusCircle{id}") as System.Windows.Shapes.Ellipse;
+            var ellipse = FindName($"f{id}alarm") as System.Windows.Shapes.Ellipse;
             if (ellipse == null) return;
             switch (status)
             {
-                case FfuStatus.Good: ellipse.Fill = System.Windows.Media.Brushes.LimeGreen; break;
-                case FfuStatus.Error: ellipse.Fill = System.Windows.Media.Brushes.Red; break;
-                case FfuStatus.None: ellipse.Fill = System.Windows.Media.Brushes.Gray; break;
+                case FfuStatus.Good: ellipse.Fill = (Brush)FindResource("GreenAlarm"); break;
+                case FfuStatus.Error: ellipse.Fill = (Brush)FindResource("RedAlarm"); break;
+                case FfuStatus.None: ellipse.Fill = (Brush)FindResource("NoneAlarm"); break;
+            }
+        }
+        private void SetAlarmDescription(int id, string desc)
+        {
+            // f1alarminfo ~ f4alarminfo 만 유효
+            if (id < 1 || id > 6) return;
+
+            if (FindName($"f{id}alarminfo") is TextBlock tb)
+            {
+                tb.Text = desc;
             }
         }
 
@@ -661,6 +689,11 @@ namespace Ffu.Master
             }
         }
 
+        private void Btn(object sender, RoutedEventArgs e)
+        {
+            f1alarm.Fill = (Brush)FindResource("GreenAlarm");
+            f1alarm.Fill = (Brush)FindResource("RedAlarm");
+        }
     }
 
 }

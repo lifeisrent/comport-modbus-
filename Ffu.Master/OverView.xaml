@@ -19,6 +19,24 @@
         <SolidColorBrush x:Key="gray800" Color="#26282B"/>
         <SolidColorBrush x:Key="gray900" Color="#1B1D1F"/>
 
+        <RadialGradientBrush x:Key="RedAlarm" Center="0.3,0.3" RadiusX="0.8" RadiusY="0.8">
+            <GradientStop Color="#F1948A" Offset="0"/>
+            <GradientStop Color="#E74C3C" Offset="0.5"/>
+            <GradientStop Color="#A93226" Offset="1"/>
+        </RadialGradientBrush>
+
+        <RadialGradientBrush x:Key="GreenAlarm" Center="0.3,0.3" RadiusX="0.8" RadiusY="0.8">
+            <GradientStop Color="#58D68D" Offset="0"/>
+            <GradientStop Color="#27AE60" Offset="0.6"/>
+            <GradientStop Color="#1D8348" Offset="1"/>
+        </RadialGradientBrush>
+
+        <LinearGradientBrush x:Key="NoneAlarm" StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#9EA4AA" Offset="0"/>
+            <GradientStop Color="#72787F" Offset="0.5"/>
+            <GradientStop Color="#454C53" Offset="1"/>
+        </LinearGradientBrush>
+
         <Style x:Key="slider" TargetType="dxe:CheckEdit">
             <Setter Property="FontFamily" Value="Segoe UI"/>
             <Setter Property="Template">
@@ -508,17 +526,10 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="F1" Style="{StaticResource h3-text}"/>
-                        <Ellipse Grid.Column="1" Style="{StaticResource StatusIndicatorStyle}">
-                            <Ellipse.Fill>
-                                <RadialGradientBrush Center="0.3,0.3" RadiusX="0.8" RadiusY="0.8">
-                                    <GradientStop Color="#F1948A" Offset="0"/>
-                                    <GradientStop Color="#E74C3C" Offset="0.5"/>
-                                    <GradientStop Color="#A93226" Offset="1"/>
-                                </RadialGradientBrush>
-                            </Ellipse.Fill>
-                        </Ellipse>
+                        <Ellipse x:Name="f1alarm" Grid.Column="1" Fill="{StaticResource NoneAlarm}" Style="{StaticResource StatusIndicatorStyle}"/>
+
                         <Border Grid.Column="2" Style="{StaticResource AlarmEditBorder}">
-                            <TextBlock Text="E 08" Style="{StaticResource AlarmDescription}"/>
+                            <TextBlock x:Name="f1alarminfo" Text="None" Style="{StaticResource AlarmDescription}"/>
                         </Border>
                     </Grid>
 
@@ -529,17 +540,10 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="F2" Style="{StaticResource h3-text}"/>
-                        <Ellipse Grid.Column="1" Style="{StaticResource StatusIndicatorStyle}">
-                            <Ellipse.Fill>
-                                <RadialGradientBrush Center="0.3,0.3" RadiusX="0.8" RadiusY="0.8">
-                                    <GradientStop Color="#58D68D" Offset="0"/>
-                                    <GradientStop Color="#27AE60" Offset="0.6"/>
-                                    <GradientStop Color="#1D8348" Offset="1"/>
-                                </RadialGradientBrush>
-                            </Ellipse.Fill>
-                        </Ellipse>
+                        <Ellipse x:Name="f2alarm" Grid.Column="1" Fill="{StaticResource NoneAlarm}" Style="{StaticResource StatusIndicatorStyle}"/>
+
                         <Border Grid.Column="2" Style="{StaticResource AlarmEditBorder}">
-                            <TextBlock Grid.Column="2" Text="Normal" Style="{StaticResource AlarmDescription}"/>
+                            <TextBlock x:Name="f2alarminfo"  Grid.Column="2" Text="None" Style="{StaticResource AlarmDescription}"/>
                         </Border>
                     </Grid>
 
@@ -550,17 +554,10 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="F3" Style="{StaticResource h3-text}"/>
-                        <Ellipse Grid.Column="1" Style="{StaticResource StatusIndicatorStyle}">
-                            <Ellipse.Fill>
-                                <RadialGradientBrush Center="0.3,0.3" RadiusX="0.8" RadiusY="0.8">
-                                    <GradientStop Color="#58D68D" Offset="0"/>
-                                    <GradientStop Color="#27AE60" Offset="0.6"/>
-                                    <GradientStop Color="#1D8348" Offset="1"/>
-                                </RadialGradientBrush>
-                            </Ellipse.Fill>
-                        </Ellipse>
+                        <Ellipse x:Name="f3alarm" Grid.Column="1" Fill="{StaticResource NoneAlarm}" Style="{StaticResource StatusIndicatorStyle}"/>
+
                         <Border Grid.Column="2" Style="{StaticResource AlarmEditBorder}">
-                            <TextBlock Grid.Column="2" Text="Normal" Style="{StaticResource AlarmDescription}"/>
+                            <TextBlock x:Name="f3alarminfo"  Grid.Column="2" Text="None" Style="{StaticResource AlarmDescription}"/>
                         </Border>
                     </Grid>
 
@@ -571,17 +568,10 @@
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="F4" Style="{StaticResource h3-text}"/>
-                        <Ellipse Grid.Column="1" Style="{StaticResource StatusIndicatorStyle}">
-                            <Ellipse.Fill>
-                                <RadialGradientBrush Center="0.3,0.3" RadiusX="0.8" RadiusY="0.8">
-                                    <GradientStop Color="#58D68D" Offset="0"/>
-                                    <GradientStop Color="#27AE60" Offset="0.6"/>
-                                    <GradientStop Color="#1D8348" Offset="1"/>
-                                </RadialGradientBrush>
-                            </Ellipse.Fill>
-                        </Ellipse>
+                        <Ellipse x:Name="f4alarm" Grid.Column="1" Fill="{StaticResource NoneAlarm}" Style="{StaticResource StatusIndicatorStyle}"/>
+
                         <Border Grid.Column="2" Style="{StaticResource AlarmEditBorder}">
-                            <TextBlock Grid.Column="2" Text="Normal" Style="{StaticResource AlarmDescription}"/>
+                            <TextBlock x:Name="f4alarminfo"  Grid.Column="2" Text="None" Style="{StaticResource AlarmDescription}"/>
                         </Border>
                     </Grid>
                 </StackPanel>
@@ -751,7 +741,7 @@
                             <Button Content="SUN" Background="#95A5A6" Foreground="White" Margin="2" Padding="10,2"/>
                         </StackPanel>
 
-                        <TextBlock Grid.Column="1" Text="2025.7.23 ~ 2025.7.30" VerticalAlignment="Center" Margin="10,0"/>
+                        <TextBlock Grid.Column="1" Text="2025.9.11 ~ 2025.9.30" VerticalAlignment="Center" Margin="10,0"/>
                         <StackPanel Grid.Column="2" Orientation="Horizontal">
                             <TextBlock Text="AM 08:00 ~ PM 18:00" VerticalAlignment="Center" Margin="10,0"/>
                             <Button Content="▲" Width="20" Height="20" Margin="2"/>
