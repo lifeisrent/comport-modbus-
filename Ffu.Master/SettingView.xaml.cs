@@ -20,6 +20,7 @@ namespace Ffu.Master
     /// </summary>
     public partial class SettingView : Page
     {
+        private const int hardcoded_MAXRPM = 2000;
         private readonly OverView _overView;
         public string IdsText
         {
@@ -45,8 +46,8 @@ namespace Ffu.Master
                 return;
             }
 
-            if (val > 2000)
-                val = 2000;
+            if (val > hardcoded_MAXRPM)
+                val = hardcoded_MAXRPM;
 
             FFUModel.MaxRpm = val;
 
