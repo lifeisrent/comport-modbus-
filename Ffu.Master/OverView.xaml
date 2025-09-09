@@ -486,9 +486,7 @@
                 </Border>
             </Grid>
         </Border>
-        <Grid Grid.Column="0" Grid.Row="1" Grid.ColumnSpan="2" Margin="12" Height="272" Width="535" VerticalAlignment="Top" Grid.RowSpan="2">
-            <TextBox x:Name="TxtLog" IsReadOnly="True" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap"/>
-        </Grid>
+
 
         <Border Grid.Column="1" Grid.Row="0" BorderThickness="1" BorderBrush="#BDC3C7" Margin="5">
             <Grid>
@@ -599,9 +597,8 @@
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
                     <RowDefinition Height="4"/>
-                    <RowDefinition Height="Auto" MinHeight="120"/>
-                    <RowDefinition Height="Auto" MinHeight="220"/>
                 </Grid.RowDefinitions>
 
                 <Border Grid.Row="0" Background="{StaticResource gray400}" Padding="10">
@@ -685,6 +682,11 @@
 
                     </UniformGrid>
                 </Border>
+
+                <Grid Grid.Row="6" Height="150">
+                    <!--<Grid Margin="12" Height="272" Width="535" VerticalAlignment="Top" Grid.RowSpan="2">-->
+                        <TextBox x:Name="TxtLog" IsReadOnly="True" VerticalScrollBarVisibility="Auto" TextWrapping="Wrap"/>
+                </Grid>
             </Grid>
         </Border>
         <Grid Grid.Column="2" Grid.Row="1">
