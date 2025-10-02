@@ -36,6 +36,9 @@ namespace Ffu.Master
         private CommLogger logger;
         private bool isCommLogging = true; // 추가된 필드
 
+        private readonly List<SerialPort> _openedPorts = new List<SerialPort>();
+
+
         public OverView()
         {
             InitializeComponent();
@@ -89,31 +92,63 @@ namespace Ffu.Master
             if (sender is FrameworkElement fe && TryGetId(fe.Tag, out int id))
                 AdjustAndSend(id, -100);
         }
-        public async Task<bool> OpenPort(string com)
+        public async Task<bool> OpenPorts(string comText)
         {
-            try
-            {
-                _port = new SerialPort(com, 9600, Parity.None, 8, StopBits.One)
-                {
-                    ReadTimeout = 200,
-                    WriteTimeout = 200
-                };
-                _port.Open();
-                _port.DtrEnable = false;
-                _port.RtsEnable = false;
-                _port.Handshake = Handshake.None;
-                _port.DiscardInBuffer();
-                _port.DiscardOutBuffer();
-                await Task.Delay(200);
+            // 분리자: 쉼표, 세미콜론, 공백
+            if (string.IsNullOrWhiteSpace(comText)) { Log("COM 입력 없음"); return false; }
 
-                Log($"OPEN {_port.PortName} 9600");
-                return true; 
-            }
-            catch (Exception ex)
+            var tokens = comText.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Length == 0) { Log("COM 토큰 없음"); return false; }
+
+            int success = 0;
+
+            for (int i = 0; i < tokens.Length; i++)
             {
-                Log($"Open FAIL: {ex.Message}");
-                return false; 
+                var com = tokens[i].Trim();
+                if (string.IsNullOrWhiteSpace(com)) continue;
+
+                // 중복 열기 방지
+                bool already = false;
+                for (int k = 0; k < _openedPorts.Count; k++)
+                {
+                    if (string.Equals(_openedPorts[k].PortName, com, StringComparison.OrdinalIgnoreCase))
+                    { already = true; break; }
+                }
+                if (already) { Log($"{com} 이미 열림"); continue; }
+
+                try
+                {
+                    var sp = new SerialPort(com, 9600, Parity.None, 8, StopBits.One)
+                    {
+                        ReadTimeout = 200,
+                        WriteTimeout = 200
+                    };
+                    sp.Open();
+                    sp.DtrEnable = false;
+                    sp.RtsEnable = false;
+                    sp.Handshake = Handshake.None;
+                    sp.DiscardInBuffer();
+                    sp.DiscardOutBuffer();
+                    await Task.Delay(200);
+
+                    _openedPorts.Add(sp);
+                    Log($"OPEN {sp.PortName} 9600");
+
+                    // 주 포트가 없으면 첫 성공 포트를 주 포트로 지정 (기존 폴링 로직 유지)
+                    if (_port == null || !_port.IsOpen) _port = sp;
+
+                    success++;
+                }
+                catch (Exception ex)
+                {
+                    Log($"Open FAIL [{com}]: {ex.Message}");
+                }
             }
+
+            if (success == 0) { Log("모든 포트 오픈 실패"); return false; }
+
+            Log($"총 {success}개 포트 오픈");
+            return true;
         }
 
 
@@ -574,29 +609,34 @@ namespace Ffu.Master
         {
             try
             {
-                // 포트가 열려 있으면 닫기 전에 RPM 캐시 저장
-                if (_port != null && _port.IsOpen)
-                {
-                    SaveRpmCache(_port.PortName);
-                }
+                // (기존) 주 포트 RPM 캐시 저장 및 폴링 중지
+                if (_port != null && _port.IsOpen) { SaveRpmCache(_port.PortName); }
                 _cts?.Cancel(); _sendTask?.Wait(200);
             }
             catch { }
-            try { _port?.Close(); _port?.Dispose(); } catch { }
-            _cts = null; _sendTask = null; _port = null;
-            //BtnOpen.IsEnabled = true; BtnClose.IsEnabled = false; BtnStart.IsEnabled = false; BtnStop.IsEnabled = false;
-            Log("CLOSED");
 
-            Dispatcher.Invoke(() =>
+            // (추가) 모든 보조/추가 포트 포함 닫기
+            try
             {
-                for (int i = 1; i <= 6; i++)
-                {
-                    SetStatusCircle(i, FfuStatus.None);
-                    SetAlarmDescription(i, "None");
-                }
+                // 주 포트
+                try { _port?.Close(); _port?.Dispose(); } catch { }
+                _port = null;
 
-            });
+                // 추가로 열린 포트들
+                for (int i = 0; i < _openedPorts.Count; i++)
+                {
+                    try { _openedPorts[i].Close(); _openedPorts[i].Dispose(); } catch { }
+                }
+                _openedPorts.Clear();
+            }
+            catch { }
+
+            _cts = null; _sendTask = null;
+
+            Log("CLOSED");
+            // (기존) UI 상태 초기화 그대로 유지
         }
+
 
         private static bool TryGetId(object? tag, out int id)
         {

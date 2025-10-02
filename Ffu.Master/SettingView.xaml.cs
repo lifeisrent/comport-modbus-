@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO.Ports;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -21,6 +22,7 @@ namespace Ffu.Master
     public partial class SettingView : Page
     {
         private const int hardcoded_MAXRPM = 2000;
+
         private readonly OverView _overView;
         public string IdsText
         {
@@ -73,23 +75,23 @@ namespace Ffu.Master
                 MessageBox.Show("maxrpm edit error.");
                 return;
             }
-
-            if (val > hardcoded_MAXRPM)
-                val = hardcoded_MAXRPM;
+            if (val > hardcoded_MAXRPM) val = hardcoded_MAXRPM;
 
             FFUModel.MaxRpm = val;
             _overView.SetIdsText(IdsText);
 
-            bool success = await _overView.OpenPort(ComText);
+            // 변경: 단일 → 다중
+            bool success = await _overView.OpenPorts(ComText);
 
 #if !DEBUG
-                if (success)
-                {
-                    _overView.StartPolling(); // 릴리즈 모드에서는 Open 성공 시 바로 Start
-                }
-                else
-                {
-                }
+    if (success)
+    {
+        _overView.StartPolling(); // 기존 동작: 주 포트 기준 폴링 시작
+    }
+    else
+    {
+        // 실패 시 처리 필요하면 여기에
+    }
 #endif
             RbClose.IsEnabled = success;
         }
