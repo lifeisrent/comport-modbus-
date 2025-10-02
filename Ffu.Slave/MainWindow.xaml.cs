@@ -34,7 +34,7 @@ namespace Ffu.Slave
         private readonly ConcurrentDictionary<int, int> _rpmById = new();
 
         // 통신 로깅
-        private bool isCommLogging = true;
+        private bool isCommLogging = false;
         private CommLogger logger = new CommLogger("rs485_slave_log.csv");
 
         public MainWindow()
@@ -71,9 +71,7 @@ namespace Ffu.Slave
         {
             try
             {
-                // 여러 포트 입력 허용: 콤마/세미콜론/공백
                 var tokens = TxtCom.Text.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
-
                 if (tokens.Length == 0) { Log("COM 입력 없음"); return; }
 
                 foreach (var raw in tokens)
@@ -81,20 +79,13 @@ namespace Ffu.Slave
                     var com = raw.Trim();
                     if (string.IsNullOrWhiteSpace(com)) continue;
 
-                    // 이미 열려 있는지 단순 확인
                     bool already = false;
                     for (int i = 0; i < _ports.Count; i++)
                     {
                         if (string.Equals(_ports[i].Name, com, StringComparison.OrdinalIgnoreCase))
-                        {
-                            already = true; break;
-                        }
+                        { already = true; break; }
                     }
-                    if (already)
-                    {
-                        Log($"{com} 이미 열림"); continue;
-
-                    }
+                    if (already) { Log($"{com} 이미 열림"); continue; }
 
                     var sp = new SerialPort(com, 9600, Parity.None, 8, StopBits.One)
                     {
@@ -103,47 +94,66 @@ namespace Ffu.Slave
                     };
                     sp.Open();
 
-                    var ctx = new PortCtx { Name = sp.PortName, Port = sp };
-                    _ports.Add(ctx);
+                    sp.Handshake = Handshake.None;
+                    sp.DtrEnable = false;        // ★ 많은 동글에서 필수
+                    sp.RtsEnable = false;       // ★ RS485에서 TX-Enable에 물린 경우, 켜두면 RX가 막힘
+                    sp.DiscardInBuffer();       // 쓰레기 바이트 제거
+                    sp.DiscardOutBuffer();
 
-                    Log($"OPEN {sp.PortName} 9600-8N1");
+                    //sp.Handshake = Handshake.None;
+                    //sp.DtrEnable = true;        // ★ 많은 동글에서 필수
+                    //sp.RtsEnable = false;       // ★ RS485에서 TX-Enable에 물린 경우, 켜두면 RX가 막힘
+                    //sp.ReceivedBytesThreshold = 1;
+                    //sp.NewLine = "\r\n";
+                    //sp.DiscardInBuffer();       // 쓰레기 바이트 제거
+                    //sp.DiscardOutBuffer();
+
+                    var ctx = new PortCtx { Name = sp.PortName, Port = sp };
+                    // ★ 여기서 바로 포트별 수신 대기 시작
+                    ctx.Cts = new CancellationTokenSource();
+                    ctx.LoopTask = Task.Run(() => ListenLoop(ctx, ctx.Cts.Token));
+
+                    _ports.Add(ctx);
+                    Log($"OPEN {sp.PortName} 9600-8N1 (listening)");
                 }
 
                 if (_ports.Count > 0)
                 {
-                    BtnOpen.IsEnabled = false; BtnClose.IsEnabled = true; BtnStart.IsEnabled = true;
+                    BtnOpen.IsEnabled = false;
+                    BtnClose.IsEnabled = true;
+                    BtnStart.IsEnabled = true;   // 있어도 되고, 안 써도 됨
                 }
             }
             catch (Exception ex) { Log($"Open FAIL: {ex.Message}"); }
         }
 
+
         private void BtnClose_Click(object sender, RoutedEventArgs e) => Cleanup();
 
         private void BtnStart_Click(object sender, RoutedEventArgs e)
         {
-            if (_ports.Count == 0)
-            {
-                Log("Port not open");
-                return;
-            }
+            if (_ports.Count == 0) { Log("Port not open"); return; }
 
             var ids = ParseIdSet(TxtIds.Text);
             if (ids.Count == 0) { Log("IDs empty or invalid. ex) 1,3,5-7"); return; }
 
             _idSet = new HashSet<int>(ids);
 
-            // 포트별 루프 시작
+            // 이미 ListenLoop가 돌고 있을 수 있으므로, 없는 것만 시작
             for (int i = 0; i < _ports.Count; i++)
             {
                 var ctx = _ports[i];
                 if (!ctx.Port.IsOpen) continue;
+                if (ctx.LoopTask != null && !ctx.LoopTask.IsCompleted) continue; // 이미 실행 중
 
                 ctx.Cts = new CancellationTokenSource();
                 ctx.LoopTask = Task.Run(() => ListenLoop(ctx, ctx.Cts.Token));
             }
 
-            BtnStart.IsEnabled = false; BtnStop.IsEnabled = true;
+            BtnStart.IsEnabled = false;
+            BtnStop.IsEnabled = true;
         }
+
 
         private void BtnStop_Click(object sender, RoutedEventArgs e)
         {
@@ -153,6 +163,7 @@ namespace Ffu.Slave
             }
             BtnStart.IsEnabled = true; BtnStop.IsEnabled = false;
         }
+
 
         private static List<int> ParseIdSet(string text)
         {

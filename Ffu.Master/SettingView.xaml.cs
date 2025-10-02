@@ -65,7 +65,7 @@ namespace Ffu.Master
 
         private async void BtnRescan_Click(object sender, RoutedEventArgs e)
         {
-            await _overView.BtnRescan_Click(); // 포트 오픈 실제 수행
+            //await _overView.BtnRescan_Click(); // 포트 오픈 실제 수행
         }
 
         private async void RbOpen_Checked(object sender, RoutedEventArgs e)

@@ -28,15 +28,29 @@ namespace Ffu.Master
 
         private readonly object _ioSync = new object();
         private readonly Dictionary<int, int> _perTarget = new();
-        private SerialPort? _port;
-        private CancellationTokenSource? _cts;
-        private Task? _sendTask;
+        //private SerialPort? _port;
+        //private CancellationTokenSource? _cts;
+        //private Task? _sendTask;
         private List<int> _ids = new();   // 여러 ID 저장
         private int _cursor;
         private CommLogger logger;
-        private bool isCommLogging = true; // 추가된 필드
+        private bool isCommLogging = false; // 추가된 필드
 
-        private readonly List<SerialPort> _openedPorts = new List<SerialPort>();
+        //private readonly List<SerialPort> _openedPorts = new List<SerialPort>();
+
+
+        // 포트 컨텍스트 (포트별 폴링 상태)
+        private sealed class PortCtx
+        {
+            public SerialPort Port = null!;
+            public string Name = "";
+            public CancellationTokenSource? Cts;
+            public Task? Loop;
+            public readonly object IoSync = new object(); // 이 포트 전용 락
+            public int Cursor; // 라운드로빈용
+        }
+
+        private readonly List<PortCtx> _portCtxs = new List<PortCtx>();
 
 
         public OverView()
@@ -94,7 +108,6 @@ namespace Ffu.Master
         }
         public async Task<bool> OpenPorts(string comText)
         {
-            // 분리자: 쉼표, 세미콜론, 공백
             if (string.IsNullOrWhiteSpace(comText)) { Log("COM 입력 없음"); return false; }
 
             var tokens = comText.Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
@@ -107,12 +120,11 @@ namespace Ffu.Master
                 var com = tokens[i].Trim();
                 if (string.IsNullOrWhiteSpace(com)) continue;
 
-                // 중복 열기 방지
+                // 이미 열렸는지 확인
                 bool already = false;
-                for (int k = 0; k < _openedPorts.Count; k++)
+                for (int k = 0; k < _portCtxs.Count; k++)
                 {
-                    if (string.Equals(_openedPorts[k].PortName, com, StringComparison.OrdinalIgnoreCase))
-                    { already = true; break; }
+                    if (string.Equals(_portCtxs[k].Name, com, StringComparison.OrdinalIgnoreCase)) { already = true; break; }
                 }
                 if (already) { Log($"{com} 이미 열림"); continue; }
 
@@ -120,23 +132,18 @@ namespace Ffu.Master
                 {
                     var sp = new SerialPort(com, 9600, Parity.None, 8, StopBits.One)
                     {
-                        ReadTimeout = 200,
-                        WriteTimeout = 200
+                        ReadTimeout = 50,   // 폴링 병렬성 위해 타이트
+                        WriteTimeout = 200,
+                        Handshake = Handshake.None,
+                        DtrEnable = false,
+                        RtsEnable = false,
                     };
                     sp.Open();
-                    sp.DtrEnable = false;
-                    sp.RtsEnable = false;
-                    sp.Handshake = Handshake.None;
-                    sp.DiscardInBuffer();
-                    sp.DiscardOutBuffer();
-                    await Task.Delay(200);
+                    sp.DiscardInBuffer(); sp.DiscardOutBuffer();
+                    await Task.Delay(150);
 
-                    _openedPorts.Add(sp);
+                    _portCtxs.Add(new PortCtx { Port = sp, Name = sp.PortName });
                     Log($"OPEN {sp.PortName} 9600");
-
-                    // 주 포트가 없으면 첫 성공 포트를 주 포트로 지정 (기존 폴링 로직 유지)
-                    if (_port == null || !_port.IsOpen) _port = sp;
-
                     success++;
                 }
                 catch (Exception ex)
@@ -151,62 +158,70 @@ namespace Ffu.Master
             return true;
         }
 
-
         public void StartPolling()
         {
-            if (_port == null || !_port.IsOpen) { Log("Port not open"); return; }
-            //_ids = ParseIdSet(TxtIds.Text);
+            if (_portCtxs.Count == 0) { Log("Port not open"); return; }
             if (_ids.Count == 0) { Log("IDs empty or invalid. ex) 1,3,5-7"); return; }
 
-            _cts = new CancellationTokenSource();
-            _sendTask = Task.Run(() => SendLoop(_cts.Token));
+            for (int i = 0; i < _portCtxs.Count; i++)
+            {
+                var ctx = _portCtxs[i];
+                if (!ctx.Port.IsOpen) continue;
 
-            //BtnStart.IsEnabled = false; BtnStop.IsEnabled = true;
+                ctx.Cts = new CancellationTokenSource();
+                ctx.Loop = Task.Run(() => SendLoopMulti(ctx, ctx.Cts.Token));
+            }
+            Log($"Polling STARTED on {_portCtxs.Count} ports");
         }
-        public async Task BtnRescan_Click()
-        {
-            if (_port == null || !_port.IsOpen) { Log("[DISC] port not open"); return; }
 
-            // 1) 루프 돌고 있으면 잠깐 멈춤
-            bool wasRunning = _cts != null && _sendTask != null && !_sendTask.IsCompleted;
-            if (wasRunning) { _cts.Cancel(); try { await _sendTask; } catch { } }
+        //public async Task BtnRescan_Click()
+        //{
+        //    if (_port == null || !_port.IsOpen) { Log("[DISC] port not open"); return; }
 
-            //BtnStart.IsEnabled = false; BtnStop.IsEnabled = false;
+        //    // 1) 루프 돌고 있으면 잠깐 멈춤
+        //    bool wasRunning = _cts != null && _sendTask != null && !_sendTask.IsCompleted;
+        //    if (wasRunning) { _cts.Cancel(); try { await _sendTask; } catch { } }
 
-            try
-            {
-                // 2) 백그라운드 재스캔 (동일 로직 재사용)
-                var ids = await Task.Run(() => SlaveID_ScanSync(start: 1, end: 64, retries: 1, interDelayMs: 8, readTimeoutOverride: 100));
-                // 3) 결과 반영 + 캐시 저장
-                //TxtIds.Text = string.Join(",", ids);
-                SaveIdsCache(_port!.PortName, ids);
-                lock (_ioSync) { _ids = new List<int>(ids); } // <== 추가
-                //Log($"[DISC] rescan: {TxtIds.Text}");
-            }
-            catch (Exception ex)
-            {
-                Log($"[DISC] rescan err: {ex.Message}");
-            }
-            finally
-            {
-                // 4) 필요하면 루프 재시작
-                if (wasRunning)
-                {
-                    _cts = new CancellationTokenSource();
-                    _sendTask = Task.Run(() => SendLoop(_cts.Token));
-                    //BtnStart.IsEnabled = false; BtnStop.IsEnabled = true;
-                }
-                else
-                {
-                    //BtnStart.IsEnabled = true; BtnStop.IsEnabled = false;
-                }
-            }
-        }
+        //    //BtnStart.IsEnabled = false; BtnStop.IsEnabled = false;
+
+        //    try
+        //    {
+        //        // 2) 백그라운드 재스캔 (동일 로직 재사용)
+        //        var ids = await Task.Run(() => SlaveID_ScanSync(start: 1, end: 64, retries: 1, interDelayMs: 8, readTimeoutOverride: 100));
+        //        // 3) 결과 반영 + 캐시 저장
+        //        //TxtIds.Text = string.Join(",", ids);
+        //        SaveIdsCache(_port!.PortName, ids);
+        //        lock (_ioSync) { _ids = new List<int>(ids); } // <== 추가
+        //        //Log($"[DISC] rescan: {TxtIds.Text}");
+        //    }
+        //    catch (Exception ex)
+        //    {
+        //        Log($"[DISC] rescan err: {ex.Message}");
+        //    }
+        //    finally
+        //    {
+        //        // 4) 필요하면 루프 재시작
+        //        if (wasRunning)
+        //        {
+        //            _cts = new CancellationTokenSource();
+        //            _sendTask = Task.Run(() => SendLoop(_cts.Token));
+        //            //BtnStart.IsEnabled = false; BtnStop.IsEnabled = true;
+        //        }
+        //        else
+        //        {
+        //            //BtnStart.IsEnabled = true; BtnStop.IsEnabled = false;
+        //        }
+        //    }
+        //}
         public void StopPolling()
         {
-            _cts?.Cancel();
-            //BtnStart.IsEnabled = true; BtnStop.IsEnabled = false;
+            for (int i = 0; i < _portCtxs.Count; i++)
+            {
+                try { _portCtxs[i].Cts?.Cancel(); } catch { }
+            }
+            Log("Polling STOP requested");
         }
+
         private void Log(string s)
         {
             Dispatcher.Invoke(() => { TxtLog.AppendText(s + Environment.NewLine); TxtLog.ScrollToEnd(); });
@@ -222,86 +237,210 @@ namespace Ffu.Master
         // 단발 송신 SET(0x06): 프레임 생성 → 송신 → (미구현) 응답 파싱/로그
         private void SendSetOnce(int id, int rpm)
         {
-            if (_port == null || !_port.IsOpen) { Log("Port not open"); return; }
-            try
+            if (_portCtxs.Count == 0) { Log("Port not open"); return; }
+            for (int i = 0; i < _portCtxs.Count; i++)
             {
-                // 단발 송신 + 0x01(TargetRPM) 확인, 실패 시 소수회 재시도
-                var ok = SendSetWithConfirm(id, rpm, retries: 3, timeoutMs: 60, backoffMs: 10);
-                if (!ok) Log($"[WARN] Set ID={id} RPM={rpm} : 0x01 응답 미수신");
-            }
-            catch (Exception ex)
-            {
-                Log($"SetOnce ERR: {ex.Message}");
-            }
-        }
+                var ctx = _portCtxs[i];
+                if (!ctx.Port.IsOpen) continue;
 
-        private async Task SendLoop(CancellationToken ct)
-        {
-            var req = new byte[7] { 0x49, 0x53, 0, 0, 0, 0, 0 };
-            int originalTimeout = _port!.ReadTimeout;
-            _port.ReadTimeout = 50; // ← 더 짧게 설정
-
-            try
-            {
-                while (!ct.IsCancellationRequested)
+                try
                 {
-                    try
-                    {
-                        int id = GetId();
-                        if (id == 0) continue;
-
-                        BuildMessageRead(req, id);
-                        SendMessage(req);
-                        TryReadAndLogOnce();  // 단순 로그/표시 (필요 시 UI 업데이트로 확장)
-
-                        await Task.Delay(120, ct).ConfigureAwait(false);
-                    }
-                    catch (OperationCanceledException) { }
-                    catch (Exception ex)
-                    {
-                        Log($"Send ERR: {ex.Message}");
-                        await Task.Delay(200, ct).ConfigureAwait(false);
-                    }
+                    var ok = SendSetWithConfirm(ctx, id, rpm, retries: 2, timeoutMs: 60, backoffMs: 10);
+                    if (!ok) Log($"[{ctx.Name}] [WARN] Set ID={id} RPM={rpm} : 0x01 응답 미수신");
+                }
+                catch (Exception ex)
+                {
+                    Log($"[{ctx.Name}] SetOnce ERR: {ex.Message}");
                 }
             }
-            finally
+        }
+
+        //private async Task SendLoop(CancellationToken ct)
+        //{
+        //    var req = new byte[7] { 0x49, 0x53, 0, 0, 0, 0, 0 };
+        //    int originalTimeout = _port!.ReadTimeout;
+        //    _port.ReadTimeout = 50; // ← 더 짧게 설정
+
+        //    try
+        //    {
+        //        while (!ct.IsCancellationRequested)
+        //        {
+        //            try
+        //            {
+        //                int id = GetId();
+        //                if (id == 0) continue;
+
+        //                BuildMessageRead(req, id);
+        //                SendMessage(req);
+        //                TryReadAndLogOnce();  // 단순 로그/표시 (필요 시 UI 업데이트로 확장)
+
+        //                await Task.Delay(120, ct).ConfigureAwait(false);
+        //            }
+        //            catch (OperationCanceledException) { }
+        //            catch (Exception ex)
+        //            {
+        //                Log($"Send ERR: {ex.Message}");
+        //                await Task.Delay(200, ct).ConfigureAwait(false);
+        //            }
+        //        }
+        //    }
+        //    finally
+        //    {
+        //        _port.ReadTimeout = originalTimeout; // 복구
+        //    }
+        //}
+
+        private async Task SendLoopMulti(PortCtx ctx, CancellationToken ct)
+        {
+            var port = ctx.Port;
+            var req = new byte[7] { 0x49, 0x53, 0, 0, 0, 0, 0 };
+
+            // 포트별 라운드로빈
+            while (!ct.IsCancellationRequested)
             {
-                _port.ReadTimeout = originalTimeout; // 복구
+                try
+                {
+                    int id = GetIdFor(ctx); // 컨텍스트별 커서 사용
+                    if (id == 0) { await Task.Delay(50, ct); continue; }
+
+                    BuildMessageRead(req, id);
+
+                    lock (ctx.IoSync)
+                    {
+                        SendMessage(port, req);
+                        TryReadAndLogOnce(port);
+                    }
+
+                    await Task.Delay(100, ct); // 포트별 템포
+                }
+                catch (TimeoutException)
+                {
+                    // 무시하고 계속
+                }
+                catch (OperationCanceledException) { }
+                catch (Exception ex)
+                {
+                    Log($"[{ctx.Name}] Send ERR: {ex.Message}");
+                    await Task.Delay(150, ct);
+                }
             }
         }
 
-        // 1) 단발 송신 + 0x01 확인 재시도
-        private bool SendSetWithConfirm(int id, int rpm, int retries = 3, int timeoutMs = 60, int backoffMs = 10)
+        // 컨텍스트별 라운드로빈
+        private int GetIdFor(PortCtx ctx)
         {
-            if (_port == null || !_port.IsOpen) { Log("Port not open"); return false; }
+            lock (_ioSync)
+            {
+                if (_ids.Count == 0) return 0;
+                return _ids[(ctx.Cursor++) % _ids.Count];
+            }
+        }
 
-            var req = BuildMessage(id, rpm); // 49 53 id 06 lo hi cs
-            int originalTimeout = _port.ReadTimeout;
-            _port.ReadTimeout = Math.Min(originalTimeout, Math.Max(10, timeoutMs));
+
+        // 1) 단발 송신 + 0x01 확인 재시도
+        private bool SendSetWithConfirm(PortCtx ctx, int id, int rpm, int retries = 2, int timeoutMs = 60, int backoffMs = 10)
+        {
+            var port = ctx.Port;
+            if (port == null || !port.IsOpen) return false;
+
+            var req = BuildMessage(id, rpm);
+            int originalTimeout = port.ReadTimeout;
+            port.ReadTimeout = Math.Min(originalTimeout, Math.Max(10, timeoutMs));
 
             try
             {
                 for (int attempt = 1; attempt <= retries; attempt++)
                 {
-                    lock (_ioSync)
+                    lock (ctx.IoSync)
                     {
-                        SendMessage(req); // 내부에서 CS 세팅 + 소량 sleep(GetCommandDelayMs)
-                        if (WaitForTargetAck(id, rpm, timeoutMs))
+                        SendMessage(port, req);
+                        if (WaitForTargetAck(port, id, rpm, timeoutMs))
                             return true;
                     }
                     Thread.Sleep(backoffMs);
                 }
-                Log($"[WARN] Set ID={id} RPM={rpm} : no 0x01 within {timeoutMs}ms x {retries}");
                 return false;
             }
             finally
             {
-                _port.ReadTimeout = originalTimeout;
+                try { port.ReadTimeout = originalTimeout; } catch { }
             }
         }
 
-        // 2) 0x01(7바이트) 응답 대기/검증
-        private bool WaitForTargetAck(int wantId, int wantRpm, int timeoutMs)
+        private void SendMessage(SerialPort port, byte[] req)
+        {
+            if (isCommLogging) logger.StartRequest();
+            req[6] = SumChecksum(req, 6);
+            port.Write(req, 0, req.Length);
+            if (isCommLogging) logger.LogComm("TX", req, req.Length);
+            Thread.Sleep(GetCommandDelayMs());
+            Log($"> [{port.PortName}] {Hex(req)}");
+        }
+
+        private void TryReadAndLogOnce(SerialPort port)
+        {
+            var buf = new byte[64];
+            int got = port.Read(buf, 0, buf.Length);          // ReadTimeout=50 가정
+            if (isCommLogging) logger.LogComm("RX", buf, got);
+
+            int offset = 0;
+            while (offset < got)
+            {
+                if (got - offset >= 7 && buf[offset] == 0x44 && buf[offset + 1] == 0x54)
+                {
+                    int frameLen = (buf[offset + 3] == 0x01) ? 7
+                                 : ((got - offset >= 9 && buf[offset + 3] == 0x05) ? 9 : 0);
+                    if (frameLen > 0 && got - offset >= frameLen)
+                    {
+                        if (TryParseDt(buf.Skip(offset).ToArray(), frameLen, out byte rid, out byte cmd, out int rrpm, out AlarmFlags alarms))
+                        {
+                            switch (cmd)
+                            {
+                                case 0x05:
+                                    {
+                                        bool hasAlarm =
+                                            (alarms & (AlarmFlags.OverCurrentOrHall |
+                                                       AlarmFlags.RpmErrorHigher |
+                                                       AlarmFlags.RpmErrorLower |
+                                                       AlarmFlags.PtcError |
+                                                       AlarmFlags.PowerDetectError |
+                                                       AlarmFlags.IpmOverheat |
+                                                       AlarmFlags.AbnormalAnyAlarm)) != 0;
+                                        bool isRemote = !alarms.HasFlag(AlarmFlags.LocalMode);
+                                        string desc = hasAlarm ? string.Join(", ", DescribeAlarms(alarms)) : "Normal";
+                                        if (isCommLogging) logger.LogResponse(rid, 7, frameLen, error: hasAlarm);
+                                        Log($"< [{port.PortName}] DT ID={rid} CMD=0x{cmd:X2} RPM={rrpm} {(isRemote ? "[REMOTE]" : "[LOCAL]")} ALARM={desc} [{Hex(buf.AsSpan(offset, frameLen))}]");
+                                        UpdateRpmReadUI(rid, rrpm);
+                                        Dispatcher.Invoke(() =>
+                                        {
+                                            SetStatusCircle(rid, hasAlarm ? FfuStatus.Error : FfuStatus.Good);
+                                            SetAlarmDescription(rid, desc);
+                                        });
+                                        break;
+                                    }
+                                case 0x01:
+                                    {
+                                        if (isCommLogging) logger.LogResponse(rid, 7, frameLen, error: false);
+                                        Log($"< [{port.PortName}] DT ID={rid} CMD=0x01 TargetRPM={rrpm} [{Hex(buf.AsSpan(offset, frameLen))}]");
+                                        break;
+                                    }
+                                default:
+                                    Log($"< [{port.PortName}] Unknown CMD=0x{cmd:X2}");
+                                    break;
+                            }
+                        }
+                        offset += frameLen;
+                        continue;
+                    }
+                }
+                offset++;
+            }
+
+            if (got > 0 && offset < got)
+                Log($"< [{port.PortName}] {Hex(buf.AsSpan(offset, got - offset))}");
+        }
+
+        private bool WaitForTargetAck(SerialPort port, int wantId, int wantRpm, int timeoutMs)
         {
             var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
             var buf = new byte[64];
@@ -310,61 +449,93 @@ namespace Ffu.Master
             {
                 try
                 {
-                    int got = _port!.Read(buf, 0, buf.Length);
+                    int got = port.Read(buf, 0, buf.Length);
                     if (isCommLogging) logger.LogComm("RX", buf, got);
-                    if (got >= 7 && buf[0] == 0x44 && buf[1] == 0x54) // 'D','T'
+
+                    if (got >= 7 && buf[0] == 0x44 && buf[1] == 0x54)
                     {
                         byte id = buf[2];
                         byte cmd = buf[3];
 
-                        // 우선 0x01 7B 확인
                         if (cmd == 0x01 && buf[6] == SumChecksum(buf, 6))
                         {
-                            int rpm = DecodeRpmBE(buf[4], buf[5]); // BE
-                            if (id == wantId && rpm == wantRpm)
-                            {
-                                if (isCommLogging) logger.LogResponse(id, 7, 7, error: false);
-                                Log($"< DT ID={id} CMD=0x01 TargetRPM={rpm} [{Hex(buf.AsSpan(0, 7))}]");
-                                return true;
-                            }
+                            int rpm = DecodeRpmBE(buf[4], buf[5]);
+                            if (id == wantId && rpm == wantRpm) return true;
                         }
 
-                        // 그 외 프레임은 기존 파서로 소화(로그용)
-                        if (TryParseDt(buf, got, out byte rid, out byte rcmd, out int rrpm, out AlarmFlags alarms))
-                        {
-                            if (rcmd == 0x05)
-                            {
-                                bool hasAlarm =
-                                    (alarms & (AlarmFlags.OverCurrentOrHall |
-                                               AlarmFlags.RpmErrorHigher |
-                                               AlarmFlags.RpmErrorLower |
-                                               AlarmFlags.PtcError |
-                                               AlarmFlags.PowerDetectError |
-                                               AlarmFlags.IpmOverheat |
-                                               AlarmFlags.AbnormalAnyAlarm)) != 0;
-                                bool isRemote = !alarms.HasFlag(AlarmFlags.LocalMode);
-                                string desc = hasAlarm ? string.Join(", ", DescribeAlarms(alarms)) : "NONE";
-                                if (isCommLogging) logger.LogResponse(rid, 7, got, error: hasAlarm);
-                                Log($"< DT ID={rid} CMD=0x{rcmd:X2} RPM={rrpm} {(isRemote ? "[REMOTE]" : "[LOCAL]")} ALARM={desc} [{Hex(buf.AsSpan(0, got))}]");
-                                UpdateRpmReadUI(rid, rrpm);
-
-                            }
-                            else if (rcmd == 0x01)
-                            {
-                                if (isCommLogging) logger.LogResponse(rid, 7, got, error: false);
-                                Log($"< DT ID={rid} CMD=0x01 TargetRPM={rrpm} [{Hex(buf.AsSpan(0, got))}]");
-                                if (rid == wantId && rrpm == wantRpm) return true;
-                            }
-                        }
+                        // 필요 시 0x05 등 다른 응답은 TryReadAndLogOnce 로직과 동일하게 처리 가능
                     }
                 }
-                catch (TimeoutException)
-                {
-                    // 계속 대기
-                }
+                catch (TimeoutException) { /* 계속 대기 */ }
             }
             return false;
         }
+
+        // 2) 0x01(7바이트) 응답 대기/검증
+        //private bool WaitForTargetAck(int wantId, int wantRpm, int timeoutMs)
+        //{
+        //    var deadline = DateTime.UtcNow.AddMilliseconds(timeoutMs);
+        //    var buf = new byte[64];
+
+        //    while (DateTime.UtcNow < deadline)
+        //    {
+        //        try
+        //        {
+        //            int got = _port!.Read(buf, 0, buf.Length);
+        //            if (isCommLogging) logger.LogComm("RX", buf, got);
+        //            if (got >= 7 && buf[0] == 0x44 && buf[1] == 0x54) // 'D','T'
+        //            {
+        //                byte id = buf[2];
+        //                byte cmd = buf[3];
+
+        //                // 우선 0x01 7B 확인
+        //                if (cmd == 0x01 && buf[6] == SumChecksum(buf, 6))
+        //                {
+        //                    int rpm = DecodeRpmBE(buf[4], buf[5]); // BE
+        //                    if (id == wantId && rpm == wantRpm)
+        //                    {
+        //                        if (isCommLogging) logger.LogResponse(id, 7, 7, error: false);
+        //                        Log($"< DT ID={id} CMD=0x01 TargetRPM={rpm} [{Hex(buf.AsSpan(0, 7))}]");
+        //                        return true;
+        //                    }
+        //                }
+
+        //                // 그 외 프레임은 기존 파서로 소화(로그용)
+        //                if (TryParseDt(buf, got, out byte rid, out byte rcmd, out int rrpm, out AlarmFlags alarms))
+        //                {
+        //                    if (rcmd == 0x05)
+        //                    {
+        //                        bool hasAlarm =
+        //                            (alarms & (AlarmFlags.OverCurrentOrHall |
+        //                                       AlarmFlags.RpmErrorHigher |
+        //                                       AlarmFlags.RpmErrorLower |
+        //                                       AlarmFlags.PtcError |
+        //                                       AlarmFlags.PowerDetectError |
+        //                                       AlarmFlags.IpmOverheat |
+        //                                       AlarmFlags.AbnormalAnyAlarm)) != 0;
+        //                        bool isRemote = !alarms.HasFlag(AlarmFlags.LocalMode);
+        //                        string desc = hasAlarm ? string.Join(", ", DescribeAlarms(alarms)) : "NONE";
+        //                        if (isCommLogging) logger.LogResponse(rid, 7, got, error: hasAlarm);
+        //                        Log($"< DT ID={rid} CMD=0x{rcmd:X2} RPM={rrpm} {(isRemote ? "[REMOTE]" : "[LOCAL]")} ALARM={desc} [{Hex(buf.AsSpan(0, got))}]");
+        //                        UpdateRpmReadUI(rid, rrpm);
+
+        //                    }
+        //                    else if (rcmd == 0x01)
+        //                    {
+        //                        if (isCommLogging) logger.LogResponse(rid, 7, got, error: false);
+        //                        Log($"< DT ID={rid} CMD=0x01 TargetRPM={rrpm} [{Hex(buf.AsSpan(0, got))}]");
+        //                        if (rid == wantId && rrpm == wantRpm) return true;
+        //                    }
+        //                }
+        //            }
+        //        }
+        //        catch (TimeoutException)
+        //        {
+        //            // 계속 대기
+        //        }
+        //    }
+        //    return false;
+        //}
 
 
         #endregion
@@ -485,81 +656,81 @@ namespace Ffu.Master
         }
 
 
-        private void SendMessage(byte[] req)
-        {
-            if (isCommLogging) logger.StartRequest();
-            req[6] = SumChecksum(req, 6);
-            _port!.Write(req, 0, req.Length);
-            if (isCommLogging) logger.LogComm("TX", req, req.Length); // 송신 로그
-            Thread.Sleep(GetCommandDelayMs()); // Command 구간 시간 적용
-            Log($"> {Hex(req)}");
-        }
+        //private void SendMessage(byte[] req)
+        //{
+        //    if (isCommLogging) logger.StartRequest();
+        //    req[6] = SumChecksum(req, 6);
+        //    _port!.Write(req, 0, req.Length);
+        //    if (isCommLogging) logger.LogComm("TX", req, req.Length); // 송신 로그
+        //    Thread.Sleep(GetCommandDelayMs()); // Command 구간 시간 적용
+        //    Log($"> {Hex(req)}");
+        //}
 
-        private void TryReadAndLogOnce()
-        {
-            try
-            {
-                var buf = new byte[32];
-                int got = _port!.Read(buf, 0, buf.Length);
-                if (isCommLogging) logger.LogComm("RX", buf, got); // 수신 로그
+        //private void TryReadAndLogOnce()
+        //{
+        //    try
+        //    {
+        //        var buf = new byte[32];
+        //        int got = _port!.Read(buf, 0, buf.Length);
+        //        if (isCommLogging) logger.LogComm("RX", buf, got); // 수신 로그
 
-                int offset = 0;
-                while (offset < got)
-                {
-                    // 프레임 헤더 검사
-                    if (got - offset >= 7 && buf[offset] == 0x44 && buf[offset + 1] == 0x54)
-                    {
-                        int frameLen = (buf[offset + 3] == 0x01) ? 7 : ((got - offset >= 9 && buf[offset + 3] == 0x05) ? 9 : 0);
-                        if (frameLen > 0 && got - offset >= frameLen)
-                        {
-                            // 프레임 단위 파싱
-                            if (TryParseDt(buf.Skip(offset).ToArray(), frameLen, out byte rid, out byte cmd, out int rrpm, out AlarmFlags alarms))
-                            {
-                                if (cmd == 0x05)
-                                {
-                                    bool hasAlarm =
-                                        (alarms & (AlarmFlags.OverCurrentOrHall |
-                                                   AlarmFlags.RpmErrorHigher |
-                                                   AlarmFlags.RpmErrorLower |
-                                                   AlarmFlags.PtcError |
-                                                   AlarmFlags.PowerDetectError |
-                                                   AlarmFlags.IpmOverheat |
-                                                   AlarmFlags.AbnormalAnyAlarm)) != 0;
-                                    bool isRemote = !alarms.HasFlag(AlarmFlags.LocalMode);
-                                    string desc = hasAlarm ? string.Join(", ", DescribeAlarms(alarms)) : "Normal";
-                                    if (isCommLogging) logger.LogResponse(rid, 7, frameLen, error: hasAlarm);
-                                    Log($"< DT ID={rid} CMD=0x{cmd:X2} RPM={rrpm} {(isRemote ? "[REMOTE]" : "[LOCAL]")} ALARM={desc} [{Hex(buf.AsSpan(offset, frameLen))}]");
-                                    UpdateRpmReadUI(rid, rrpm);
-                                    Dispatcher.Invoke(() =>
-                                    {
-                                        SetStatusCircle(rid, hasAlarm ? FfuStatus.Error : FfuStatus.Good);
-                                        SetAlarmDescription(rid, desc);
-                                    });
-                                }
-                                else if (cmd == 0x01)
-                                {
-                                    if (isCommLogging) logger.LogResponse(rid, 7, frameLen, error: false);
-                                    Log($"< DT ID={rid} CMD=0x{cmd:X2} TargetRPM={rrpm} [{Hex(buf.AsSpan(offset, frameLen))}]");
-                                }
-                            }
-                            offset += frameLen;
-                            continue;
-                        }
-                    }
-                    offset++;
-                }
+        //        int offset = 0;
+        //        while (offset < got)
+        //        {
+        //            // 프레임 헤더 검사
+        //            if (got - offset >= 7 && buf[offset] == 0x44 && buf[offset + 1] == 0x54)
+        //            {
+        //                int frameLen = (buf[offset + 3] == 0x01) ? 7 : ((got - offset >= 9 && buf[offset + 3] == 0x05) ? 9 : 0);
+        //                if (frameLen > 0 && got - offset >= frameLen)
+        //                {
+        //                    // 프레임 단위 파싱
+        //                    if (TryParseDt(buf.Skip(offset).ToArray(), frameLen, out byte rid, out byte cmd, out int rrpm, out AlarmFlags alarms))
+        //                    {
+        //                        if (cmd == 0x05)
+        //                        {
+        //                            bool hasAlarm =
+        //                                (alarms & (AlarmFlags.OverCurrentOrHall |
+        //                                           AlarmFlags.RpmErrorHigher |
+        //                                           AlarmFlags.RpmErrorLower |
+        //                                           AlarmFlags.PtcError |
+        //                                           AlarmFlags.PowerDetectError |
+        //                                           AlarmFlags.IpmOverheat |
+        //                                           AlarmFlags.AbnormalAnyAlarm)) != 0;
+        //                            bool isRemote = !alarms.HasFlag(AlarmFlags.LocalMode);
+        //                            string desc = hasAlarm ? string.Join(", ", DescribeAlarms(alarms)) : "Normal";
+        //                            if (isCommLogging) logger.LogResponse(rid, 7, frameLen, error: hasAlarm);
+        //                            Log($"< DT ID={rid} CMD=0x{cmd:X2} RPM={rrpm} {(isRemote ? "[REMOTE]" : "[LOCAL]")} ALARM={desc} [{Hex(buf.AsSpan(offset, frameLen))}]");
+        //                            UpdateRpmReadUI(rid, rrpm);
+        //                            Dispatcher.Invoke(() =>
+        //                            {
+        //                                SetStatusCircle(rid, hasAlarm ? FfuStatus.Error : FfuStatus.Good);
+        //                                SetAlarmDescription(rid, desc);
+        //                            });
+        //                        }
+        //                        else if (cmd == 0x01)
+        //                        {
+        //                            if (isCommLogging) logger.LogResponse(rid, 7, frameLen, error: false);
+        //                            Log($"< DT ID={rid} CMD=0x{cmd:X2} TargetRPM={rrpm} [{Hex(buf.AsSpan(offset, frameLen))}]");
+        //                        }
+        //                    }
+        //                    offset += frameLen;
+        //                    continue;
+        //                }
+        //            }
+        //            offset++;
+        //        }
 
-                // 남은 바이트가 프레임이 아니면 Hex로 출력
-                if (got > 0 && offset < got)
-                {
-                    Log($"< {Hex(buf.AsSpan(offset, got - offset))}");
-                }
-            }
-            catch (TimeoutException)
-            {
-                if (isCommLogging) logger.LogTimeout(0, 7);
-            }
-        }
+        //        // 남은 바이트가 프레임이 아니면 Hex로 출력
+        //        if (got > 0 && offset < got)
+        //        {
+        //            Log($"< {Hex(buf.AsSpan(offset, got - offset))}");
+        //        }
+        //    }
+        //    catch (TimeoutException)
+        //    {
+        //        if (isCommLogging) logger.LogTimeout(0, 7);
+        //    }
+        //}
         private bool TryParseDt(byte[] buf, int got, out byte id, out byte cmd, out int rpm, out AlarmFlags alarms)
         {
             id = 0; cmd = 0; rpm = 0; alarms = AlarmFlags.None;
@@ -609,33 +780,28 @@ namespace Ffu.Master
         {
             try
             {
-                // (기존) 주 포트 RPM 캐시 저장 및 폴링 중지
-                if (_port != null && _port.IsOpen) { SaveRpmCache(_port.PortName); }
-                _cts?.Cancel(); _sendTask?.Wait(200);
-            }
-            catch { }
-
-            // (추가) 모든 보조/추가 포트 포함 닫기
-            try
-            {
-                // 주 포트
-                try { _port?.Close(); _port?.Dispose(); } catch { }
-                _port = null;
-
-                // 추가로 열린 포트들
-                for (int i = 0; i < _openedPorts.Count; i++)
+                // 루프 중지
+                for (int i = 0; i < _portCtxs.Count; i++)
                 {
-                    try { _openedPorts[i].Close(); _openedPorts[i].Dispose(); } catch { }
+                    try { _portCtxs[i].Cts?.Cancel(); } catch { }
                 }
-                _openedPorts.Clear();
+                for (int i = 0; i < _portCtxs.Count; i++)
+                {
+                    try { _portCtxs[i].Loop?.Wait(200); } catch { }
+                }
+
+                // 포트 닫기
+                for (int i = 0; i < _portCtxs.Count; i++)
+                {
+                    try { _portCtxs[i].Port.Close(); _portCtxs[i].Port.Dispose(); } catch { }
+                }
+                _portCtxs.Clear();
             }
             catch { }
-
-            _cts = null; _sendTask = null;
 
             Log("CLOSED");
-            // (기존) UI 상태 초기화 그대로 유지
         }
+
 
 
         private static bool TryGetId(object? tag, out int id)
